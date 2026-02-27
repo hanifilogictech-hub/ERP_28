@@ -1,0 +1,77 @@
+{% extends "base_layout.html" %}
+
+{% block page_heading %}
+<div class="po-heading-bar">
+  <h1>Stock Adjustment Management</h1>
+  <a class="po-new-btn stock-new-btn" href="{% url 'stock_adjustment_new' %}">New Transaction</a>
+</div>
+{% endblock %}
+
+{% block content %}
+<section class="purchase-window purchase-order-window goods-receipt-window stock-adjustment-window">
+  <div class="doc-body">
+    <div class="gr-row stock-filter-row">
+      <div class="gr-field-group">
+        <label class="po-label" for="sa_filter_no">Stock Adj No</label>
+        <input id="sa_filter_no" class="po-no-input" type="text" placeholder="Stock Adj No">
+      </div>
+      <div class="gr-field-group">
+        <label class="po-label" for="sa_filter_from_date">From Date</label>
+        <input id="sa_filter_from_date" class="po-field-date" type="date">
+      </div>
+      <div class="gr-field-group">
+        <label class="po-label" for="sa_filter_to_date">To Date</label>
+        <input id="sa_filter_to_date" class="po-field-date" type="date">
+      </div>
+      <div class="gr-actions stock-actions">
+        <button type="button" class="po-search-btn" title="Search" aria-label="Search">&#128269;</button>
+        <button type="button" class="gr-icon-btn" title="Print" aria-label="Print">&#128424;</button>
+        <button type="button" class="gr-icon-btn gr-delete-btn" title="Delete" aria-label="Delete">&#128465;</button>
+      </div>
+    </div>
+
+    <div class="gr-row stock-filter-row">
+      <div class="gr-field-group">
+        <label class="po-label" for="sa_filter_location">Select Location</label>
+        <select id="sa_filter_location" class="po-field-select">
+          <option value="">Select Location</option>
+          {% for location in sa_locations %}
+          <option value="{{ location }}">{{ location }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <table class="doc-table po-items-table gr-items-table stock-grid adjustment-grid">
+      <thead>
+        <tr>
+          <th><input type="checkbox" aria-label="Select all"></th>
+          <th>StockAdjustment No</th>
+          <th>Date</th>
+          <th>Location Code</th>
+          <th>Remarks</th>
+          <th>Create User</th>
+          <th>Create Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in sa_rows %}
+        <tr>
+          <td><input type="checkbox" aria-label="Select row"></td>
+          <td>{{ row.adjust_no }}</td>
+          <td>{{ row.date }}</td>
+          <td>{{ row.location }}</td>
+          <td>{{ row.remarks }}</td>
+          <td>{{ row.create_user }}</td>
+          <td>{{ row.create_date }}</td>
+        </tr>
+        {% empty %}
+        <tr class="gr-empty-row">
+          <td colspan="7">No data available in table</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

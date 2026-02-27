@@ -1,0 +1,272 @@
+{% extends "base_layout.html" %}
+{% block content %}
+
+<div class="page-card">
+
+    <!-- TOP BAR -->
+    <div class="erp-topbar">
+        <div class="erp-topbar-title">
+            Sales Invoice Management
+        </div>
+
+        <a href="{% url 'delivery_new' %}" class="filter-btn sm">
+            New Transaction
+        </a>
+
+        <!-- ARROW -->
+        <button type="button" class="filter-btn sm dropdown-toggle">
+            <i class="fa-solid fa-chevron-down"></i>
+        </button>
+
+    <div class="dropdown-menu">
+        <a href="#">Convert to Sales Invoice</a>
+        <a href="#">Create Bulk Do</a>
+        <a href="#">Send Sms</a>
+        <a href="#">Repeat Delivery Order</a>
+        <a href="#">Change DO Date</a>
+        <a href="#">Tracking Images</a>
+        <a href="#">Print Without Price</a>
+       
+    </div>
+</div>
+    </div>
+
+    <!-- FILTER ROW 1 -->
+    <div class="filter-row sales-row-1">
+
+        <input type="text"
+               class="filter-input sm"
+               placeholder="Transaction No">
+
+        <button class="filter-btn sm">
+            Search
+        </button>
+
+        <button class="icon-btn">
+            <i class="fa-solid fa-print"></i>
+        </button>
+
+        <button class="icon-btn delete-btn">
+            <i class="fa-solid fa-trash"></i>
+        </button>
+
+        <!-- FROM DATE -->
+        <div class="date-field">
+            <label>From Date</label>
+            <input type="date" class="filter-input sm">
+        </div>
+
+        <!-- TO DATE -->
+        <div class="date-field">
+            <label>To Date</label>
+            <input type="date" class="filter-input sm">
+        </div>
+
+    </div>
+
+    <!-- FILTER ROW 2 -->
+    <div class="filter-row sales-row-2">
+
+       <div class="custom-dropdown location-dropdown">
+
+    <div class="dropdown-label">
+        Select Location
+        <i class="fa-solid fa-chevron-down arrow"></i>
+    </div>
+
+    <div class="dropdown-menu-custom">
+        <input type="text" class="dropdown-search" placeholder="Search location...">
+
+        <div class="dropdown-options">
+            <div class="dropdown-item">Select Location</div>
+        </div>
+    </div>
+
+</div>
+
+        <input type="text"
+               class="filter-input sm"
+               placeholder="Customer">
+
+        <input type="text"
+               class="filter-input sm"
+               placeholder="Order No">
+
+       <div class="custom-dropdown location-dropdown">
+
+    
+   <div class="custom-dropdown approved-dropdown">
+
+    <div class="dropdown-label">
+        Not Paid
+        <i class="fa-solid fa-chevron-down arrow"></i>
+    </div>
+   
+              
+
+    <div class="dropdown-menu-custom">
+        <input type="text" class="dropdown-search" placeholder="Search status...">
+
+        <div class="dropdown-options">
+            <div class="dropdown-item">Select Paid Status</div>
+            <div class="dropdown-item">All</div>
+            <div class="dropdown-item">Paid</div>
+            <div class="dropdown-item">Not Paid</div>
+        </div>
+    </div>
+
+</div>
+
+</div>
+
+    </div>
+
+    <!-- TABLE PANEL -->
+    <div class="dash-panel wide">
+
+        <table class="dash-table">
+            <thead>
+                <tr>
+                    <th><input type="checkbox"></th>
+                    <th>Tran No</th>
+                    <th>Tran Date</th>
+                    <th>Customer</th>
+                    <th>Status</th>
+                    <th>Sms Status</th>
+                    <th>Sub Total</th>
+                    <th>Tax</th>
+                    <th>Net Total</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                <tr>
+                    <td colspan="6" class="empty-cell">
+                        No data available in table
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+    </div>
+
+   <!-- TABLE FOOTER -->
+<div class="table-bottom">
+
+    <div class="records-info">
+        Total Records : 0
+    </div>
+
+    <div class="pagination">
+        <button class="page-btn">Previous</button>
+        <button class="page-btn">Next</button>
+    </div>
+
+</div>
+
+</div>
+<script>
+
+// ===============================
+// 1️⃣ TOP RIGHT "New Transaction" DROPDOWN
+// ===============================
+const dropdownToggle = document.querySelector(".dropdown-toggle");
+const dropdown = document.querySelector(".dropdown");
+
+if (dropdownToggle && dropdown) {
+    dropdownToggle.addEventListener("click", function(e) {
+        e.stopPropagation();
+        dropdown.classList.toggle("active");
+    });
+
+    document.addEventListener("click", function(e) {
+        if (!e.target.closest(".dropdown")) {
+            dropdown.classList.remove("active");
+        }
+    });
+}
+
+
+// ===============================
+// 2️⃣ CUSTOM SEARCHABLE DROPDOWNS
+// ===============================
+document.querySelectorAll(".dropdown-label").forEach(function(label) {
+
+    label.addEventListener("click", function(e) {
+        e.stopPropagation();
+
+        // Close all other dropdowns
+        document.querySelectorAll(".dropdown-menu-custom").forEach(function(menu) {
+            if (menu !== label.nextElementSibling) {
+                menu.style.display = "none";
+            }
+        });
+
+        const menu = this.nextElementSibling;
+
+        menu.style.display =
+            menu.style.display === "block" ? "none" : "block";
+    });
+
+});
+
+
+// ===============================
+// 3️⃣ CLOSE DROPDOWN IF CLICK OUTSIDE
+// ===============================
+document.addEventListener("click", function(e) {
+
+    if (!e.target.closest(".custom-dropdown")) {
+        document.querySelectorAll(".dropdown-menu-custom").forEach(function(menu) {
+            menu.style.display = "none";
+        });
+    }
+
+});
+
+
+// ===============================
+// 4️⃣ SEARCH FILTER INSIDE DROPDOWN
+// ===============================
+document.querySelectorAll(".dropdown-search").forEach(function(input) {
+
+    input.addEventListener("keyup", function() {
+
+        const filter = this.value.toLowerCase();
+        const items = this
+            .closest(".dropdown-menu-custom")
+            .querySelectorAll(".dropdown-item");
+
+        items.forEach(function(item) {
+            const text = item.textContent.toLowerCase();
+            item.style.display =
+                text.includes(filter) ? "block" : "none";
+        });
+
+    });
+
+});
+
+
+// ===============================
+// 5️⃣ SELECT OPTION AND UPDATE LABEL
+// ===============================
+document.querySelectorAll(".dropdown-item").forEach(function(item) {
+
+    item.addEventListener("click", function(e) {
+        e.stopPropagation();
+
+        const dropdownContainer = this.closest(".custom-dropdown");
+        const label = dropdownContainer.querySelector(".dropdown-label");
+
+        // Update label text (keep arrow icon)
+        label.childNodes[0].nodeValue = this.textContent + " ";
+
+        // Close dropdown
+        dropdownContainer.querySelector(".dropdown-menu-custom").style.display = "none";
+    });
+
+});
+
+</script>
+{% endblock %}

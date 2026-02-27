@@ -1,0 +1,142 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{ page_title }} - Smart ERP</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=20260225-0050" />
+  <link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=20260221-01" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand-panel">
+        <img class="brand-image" src="{% static 'img/iLogic.jpg' %}" alt="iLogic" />
+      </div>
+
+      <nav class="side-menu">
+        <a class="menu-link {% if active_page == 'dashboard' %}active{% endif %}" href="{% url 'dashboard' %}">
+          <span class="menu-left">
+            <span class="menu-icon">&#8962;</span>
+            <span class="menu-label">Dashboard</span>
+          </span>
+          <span class="menu-chevron menu-chevron-placeholder">&#8250;</span>
+        </a>
+
+        <div class="menu-group {% if inventory_open %}open{% endif %}" data-menu-group>
+          <button class="menu-trigger {% if active_page == 'inventory' %}active{% endif %}" type="button" data-menu-trigger>
+            <span class="menu-left">
+              <span class="menu-icon">&#9776;</span>
+              <span class="menu-label">Inventory</span>
+            </span>
+            <span class="menu-chevron">&#8250;</span>
+          </button>
+
+          <div class="submenu {% if inventory_open %}open{% endif %}" data-submenu>
+            <a class="submenu-link {% if active_page == 'master' %}active{% endif %}" href="{% url 'master' %}">Master <span>&#8250;</span></a>
+            <a class="submenu-link {% if active_page == 'product' %}active{% endif %}" href="{% url 'product' %}">Product <span>&#8250;</span></a>
+            <div class="submenu-group {% if purchase_open %}open{% endif %}" data-menu-group>
+              <button class="submenu-trigger {% if purchase_section %}active{% endif %}" type="button" data-menu-trigger>
+                <span>Purchase</span>
+                <span class="menu-chevron">&#8250;</span>
+              </button>
+              <div class="submenu nested-submenu {% if purchase_open %}open{% endif %}" data-submenu>
+                <a class="submenu-link purchase-child {% if active_page == 'purchase_order' %}active{% endif %}" href="{% url 'purchase_order' %}">Purchase Order</a>
+                <a class="submenu-link purchase-child {% if active_page == 'goods_receipt' %}active{% endif %}" href="{% url 'goods_receipt' %}">Goods Receipt</a>
+                <a class="submenu-link purchase-child {% if active_page == 'goods_return' %}active{% endif %}" href="{% url 'goods_return' %}">Goods Return</a>
+                <a class="submenu-link purchase-child {% if active_page == 'purchase_invoice' %}active{% endif %}" href="{% url 'purchase_invoice' %}">Purchase Invoice</a>
+              </div>
+            </div>
+            <div class="menu-group {% if sales_open %}open{% endif %}" data-menu-group>
+
+              <button class="submenu-link" type="button" data-menu-trigger style="width:100%; border:0; background:transparent; text-align:left;">
+  Sales
+  <span>&#8250;</span>
+</button>
+
+        <div class="submenu {% if sales_open %}open{% endif %}" data-submenu>
+    <!-- <a class="submenu-link">Sales Quotation</a> -->
+    <a class="submenu-link {% if active_page == 'sales_quotation' %}active{% endif %}"
+   href="{% url 'sales_quotation' %}">
+   Sales Quotation
+    </a>
+    <!-- <a class="submenu-link">Unapproved Orders</a> -->
+     <a class="submenu-link {% if active_page == 'unapproved_orders' %}active{% endif %}"
+   href="{% url 'unapproved_orders' %}">
+   Unapproved Orders
+  </a>
+    <!-- <a class="submenu-link">Sales Orders</a> -->
+     <a class="submenu-link {% if active_page == 'sales_orders' %}active{% endif %}"
+     href="{% url 'sales_orders' %}">
+   Sales Orders
+  </a>
+    <!-- <a class="submenu-link">Delivery</a> -->
+      <a class="submenu-link {% if active_page == 'delivery' %}active{% endif %}"
+      href="{% url 'delivery' %}">  Delivery
+  </a>
+    <!-- <a class="submenu-link">Sales Return</a> -->
+      <a class="submenu-link {% if active_page == 'sales_return' %}active{% endif %}"
+      href="{% url 'sales_return' %}">  Sales Return
+  </a>
+    <!-- <a class="submenu-link">Invoice</a> -->
+      <a class="submenu-link {% if active_page == 'invoice' %}active{% endif %}"
+      href="{% url 'invoice' %}">  Invoice
+  </a>
+  </div>
+
+</div>
+
+            <div class="submenu-group {% if stock_open %}open{% endif %}" data-menu-group>
+              <button class="submenu-trigger {% if stock_section %}active{% endif %}" type="button" data-menu-trigger>
+                <span>Stock</span>
+                <span class="menu-chevron">&#8250;</span>
+              </button>
+              <div class="submenu nested-submenu {% if stock_open %}open{% endif %}" data-submenu>
+                <a class="submenu-link purchase-child {% if active_page == 'stock_request' %}active{% endif %}" href="{% url 'stock_request' %}">Stock Request</a>
+                <a class="submenu-link purchase-child {% if active_page == 'stock_transfer' %}active{% endif %}" href="{% url 'stock_transfer' %}">Stock Transfer</a>
+                <a class="submenu-link purchase-child {% if active_page == 'stock_adjustment' %}active{% endif %}" href="{% url 'stock_adjustment' %}">Stock Adjustment</a>
+                <a class="submenu-link purchase-child {% if active_page == 'stock_take' %}active{% endif %}" href="{% url 'stock_take' %}">Stock Take</a>
+              </div>
+            <!-- Analysis -->
+        <div class="menu-group {% if analysis_open %}open{% endif %}" data-menu-group>
+          <button class="submenu-link menu-trigger" type="button" data-menu-trigger>
+            <span>Analysis</span>
+            <span class="menu-chevron">&#8250;</span>
+            
+          </button>
+
+          <div class="submenu nested-submenu {% if analysis_open %}open{% endif %}" data-submenu>
+            <a class="submenu-link {% if active_page == 'sales_analysis' %}active{% endif %}" href="{% url 'sales_analysis' %}">
+              Sales Analysis
+            </a>
+            <a class="submenu-link {% if active_page == 'stock_analysis' %}active{% endif %}" href="{% url 'stock_analysis' %}">
+              Stock Analysis
+            </a> 
+          </div>
+        </div>
+
+        </div>
+
+        <a class="menu-link {% if active_page == 'finance' %}active{% endif %}" href="{% url 'finance' %}">
+          <span class="menu-icon">&#128184;</span>
+          <span class="menu-label">Finance</span>
+          <span class="menu-chevron">&#8250;</span>
+        </a>
+      </nav>
+    </aside>
+
+    <main class="content-wrap">
+      {% block page_heading %}
+      <h1>{{ page_title }}</h1>
+      {% endblock %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+
+  <script src="{% static 'js/dashboard.js' %}?v=20260225-0050"></script>
+</body>
+</html>

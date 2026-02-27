@@ -1,0 +1,13 @@
+{% extends "base_layout.html" %}
+
+{% block content %}
+<div class="page-card purchase-landing">
+  <p>Select one document from the Purchase menu:</p>
+  <div class="purchase-links">
+    <a href="{% url 'purchase_order' %}">Purchase Order</a>
+    <a href="{% url 'goods_receipt' %}">Goods Receipt</a>
+    <a href="{% url 'goods_return' %}">Goods Return</a>
+    <a href="{% url 'purchase_invoice' %}">Purchase Invoice</a>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,291 @@
+{% extends "base_layout.html" %}
+
+{% block page_heading %}
+<div class="po-heading-bar">
+  <h1>Add/Edit Stock Adjustment</h1>
+</div>
+{% endblock %}
+
+{% block content %}
+<section class="po-editor-panel stock-request-form-panel stock-adjustment-form-panel">
+  <div class="po-editor-head stock-form-head adjustment-form-head">
+    <div class="po-editor-field">
+      <label for="sa_no">Stock Adj No</label>
+      <input id="sa_no" type="text" value="{{ sa_next_no|default:'SA-00032' }}" readonly>
+    </div>
+    <div class="po-editor-field">
+      <label for="sa_date">Date</label>
+      <input id="sa_date" type="date" value="{{ sa_today }}">
+    </div>
+    <div class="po-editor-field">
+      <label for="sa_location">Location</label>
+      <select id="sa_location">
+        {% for location in sa_locations %}
+        <option value="{{ location }}" {% if location == "Branch Store" %}selected{% endif %}>{{ location }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="po-editor-field adjustment-remarks">
+      <label for="sa_remarks">Remarks</label>
+      <input id="sa_remarks" type="text" placeholder="Remarks">
+    </div>
+  </div>
+
+  <div class="stock-add-row">
+    <button type="button" class="po-editor-save stock-add-btn" id="sa-add-product-btn">+ Add Product</button>
+  </div>
+
+  <table class="po-editor-table stock-product-table adjustment-product-table">
+    <thead>
+      <tr>
+        <th>SlNo</th>
+        <th>Product</th>
+        <th>Stock In Hand</th>
+        <th>Qty</th>
+        <th>StockAdj Type</th>
+        <th>Stock Adjust</th>
+        <th>New Stock</th>
+      </tr>
+    </thead>
+    <tbody id="sa-product-tbody">
+      <tr>
+        <td>1</td>
+        <td>
+          <select class="sa-product-select">
+            {% for p in sa_products %}
+            <option value="{{ p.code }}" {% if forloop.first %}selected{% endif %}>{{ p.name }}</option>
+            {% empty %}
+            <option value="">No products found</option>
+            {% endfor %}
+          </select>
+        </td>
+        <td class="sa-old-stock">0</td>
+        <td><select class="sa-sign"><option>-</option><option>+</option></select></td>
+        <td>
+          <select class="sa-reason">
+            <option>Damage</option>
+            <option>Expired</option>
+            <option>Opening Balance</option>
+            <option>Manual Correction</option>
+          </select>
+        </td>
+        <td><input type="number" class="sa-adjust" min="0" step="1" value="0"></td>
+        <td><input type="number" class="sa-new-stock" value="0" readonly></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="po-editor-buttons">
+    <a href="{% url 'stock_adjustment' %}" class="po-editor-cancel stock-link-btn">Back</a>
+    <button type="button" class="po-editor-cancel" id="sa-save-btn">Save</button>
+    <button type="button" class="po-editor-save" id="sa-submit-btn">Submit</button>
+    <button type="button" class="po-editor-cancel" id="sa-cancel-btn">Cancel</button>
+  </div>
+</section>
+
+{{ sa_products|json_script:"sa-products-data" }}
+{{ sa_stock_by_location|json_script:"sa-stock-map-data" }}
+<script>
+  (function () {
+    var addBtn = document.getElementById("sa-add-product-btn");
+    var tbody = document.getElementById("sa-product-tbody");
+    var locationEl = document.getElementById("sa_location");
+    if (!addBtn || !tbody) return;
+
+    var products = [];
+    var stockByLocation = {};
+    try {
+      products = JSON.parse((document.getElementById("sa-products-data") || {}).textContent || "[]");
+    } catch (_error) {
+      products = [];
+    }
+    try {
+      stockByLocation = JSON.parse((document.getElementById("sa-stock-map-data") || {}).textContent || "{}");
+    } catch (_error) {
+      stockByLocation = {};
+    }
+
+    function toNumber(v) {
+      var n = parseFloat(v);
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    function renumber() {
+      Array.from(tbody.querySelectorAll("tr")).forEach(function (row, idx) {
+        if (row.cells[0]) row.cells[0].textContent = String(idx + 1);
+      });
+    }
+
+    function recalcRow(row) {
+      var oldStockCell = row.querySelector(".sa-old-stock");
+      var oldStock = toNumber((oldStockCell || {}).textContent);
+      var sign = (row.querySelector(".sa-sign") || {}).value || "-";
+      var adjust = toNumber((row.querySelector(".sa-adjust") || {}).value);
+      var next = sign === "+" ? (oldStock + adjust) : (oldStock - adjust);
+      if (next < 0) next = 0;
+      var out = row.querySelector(".sa-new-stock");
+      if (out) out.value = String(next);
+    }
+
+    function updateRowStock(row) {
+      var productSelect = row.querySelector(".sa-product-select");
+      var oldStockCell = row.querySelector(".sa-old-stock");
+      var location = (locationEl || {}).value || "";
+      var productCode = (productSelect || {}).value || "";
+      var key = location + "|" + productCode;
+      var stock = Number(stockByLocation[key] || 0);
+      if (oldStockCell) oldStockCell.textContent = String(stock);
+      recalcRow(row);
+    }
+
+    function buildRow(index) {
+      var optionHtml = products.map(function (p) {
+        var code = String((p || {}).code || "");
+        var name = String((p || {}).name || "");
+        return "<option value='" + code.replace(/'/g, "&#39;") + "'>" + name.replace(/</g, "&lt;").replace(/>/g, "&gt;") + "</option>";
+      }).join("");
+      if (!optionHtml) {
+        optionHtml = "<option value=''>No products found</option>";
+      }
+      var tr = document.createElement("tr");
+      tr.innerHTML =
+        "<td></td>" +
+        "<td><select class='sa-product-select'>" + optionHtml + "</select></td>" +
+        "<td class='sa-old-stock'>0</td>" +
+        "<td><select class='sa-sign'><option>-</option><option>+</option></select></td>" +
+        "<td><select class='sa-reason'><option>Damage</option><option>Expired</option><option>Opening Balance</option><option>Manual Correction</option></select></td>" +
+        "<td><input type='number' class='sa-adjust' min='0' step='1' value='0'></td>" +
+        "<td><input type='number' class='sa-new-stock' value='0' readonly></td>";
+      return tr;
+    }
+
+    addBtn.addEventListener("click", function () {
+      var row = buildRow(tbody.rows.length);
+      tbody.appendChild(row);
+      renumber();
+      updateRowStock(row);
+    });
+
+    tbody.addEventListener("input", function (event) {
+      if (event.target.classList.contains("sa-adjust")) {
+        var row = event.target.closest("tr");
+        if (row) recalcRow(row);
+      }
+    });
+
+    tbody.addEventListener("change", function (event) {
+      if (event.target.classList.contains("sa-sign")) {
+        var row = event.target.closest("tr");
+        if (row) recalcRow(row);
+      }
+      if (event.target.classList.contains("sa-product-select")) {
+        var row2 = event.target.closest("tr");
+        if (row2) updateRowStock(row2);
+      }
+    });
+
+    if (locationEl) {
+      locationEl.addEventListener("change", function () {
+        Array.from(tbody.querySelectorAll("tr")).forEach(function (row) {
+          updateRowStock(row);
+        });
+      });
+    }
+
+    function collectItems() {
+      return Array.from(tbody.querySelectorAll("tr")).map(function (row) {
+        var productSelect = row.querySelector(".sa-product-select");
+        var productCode = (productSelect || {}).value || "";
+        var productName = "";
+        if (productSelect && productSelect.selectedIndex >= 0) {
+          productName = productSelect.options[productSelect.selectedIndex].text || "";
+        }
+        return {
+          product_code: productCode,
+          product_name: String(productName).trim(),
+          adjustment_sign: (row.querySelector(".sa-sign") || {}).value || "-",
+          reason: (row.querySelector(".sa-reason") || {}).value || "Manual Correction",
+          adjustment_qty: toNumber((row.querySelector(".sa-adjust") || {}).value)
+        };
+      }).filter(function (item) {
+        return item.product_code && item.adjustment_qty > 0;
+      });
+    }
+
+    function postJson(url, payload) {
+      return fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload || {})
+      }).then(function (response) {
+        return response.json().catch(function () { return {}; }).then(function (data) {
+          if (!response.ok || data.ok === false) {
+            throw new Error(data.error || "Request failed.");
+          }
+          return data;
+        });
+      });
+    }
+
+    function saveAdjustment() {
+      var location = (locationEl || {}).value || "";
+      if (!location) {
+        window.alert("Location is required.");
+        return Promise.reject(new Error("Location missing"));
+      }
+      var payload = {
+        adjustment_no: (document.getElementById("sa_no") || {}).value || "",
+        adjustment_date: (document.getElementById("sa_date") || {}).value || "",
+        location: location,
+        remarks: (document.getElementById("sa_remarks") || {}).value || "",
+        items: collectItems()
+      };
+      return postJson("{% url 'sa_save_api' %}", payload).then(function (data) {
+        if (data.adjustment_no) {
+          document.getElementById("sa_no").value = data.adjustment_no;
+        }
+        return data;
+      });
+    }
+
+    var saveBtn = document.getElementById("sa-save-btn");
+    var submitBtn = document.getElementById("sa-submit-btn");
+    var cancelBtn = document.getElementById("sa-cancel-btn");
+
+    if (saveBtn) {
+      saveBtn.addEventListener("click", function () {
+        saveAdjustment().then(function (data) {
+          window.alert("Saved: " + data.adjustment_no);
+        }).catch(function (error) {
+          if (error && error.message && error.message !== "Location missing") {
+            window.alert(error.message);
+          }
+        });
+      });
+    }
+
+    if (submitBtn) {
+      submitBtn.addEventListener("click", function () {
+        saveAdjustment().then(function (data) {
+          window.alert("Submitted: " + data.adjustment_no);
+          window.location.href = "{% url 'stock_adjustment' %}";
+        }).catch(function (error) {
+          if (error && error.message && error.message !== "Location missing") {
+            window.alert(error.message);
+          }
+        });
+      });
+    }
+
+    if (cancelBtn) {
+      cancelBtn.addEventListener("click", function () {
+        window.location.href = "{% url 'stock_adjustment' %}";
+      });
+    }
+
+    Array.from(tbody.querySelectorAll("tr")).forEach(function (row) {
+      updateRowStock(row);
+    });
+  })();
+</script>
+{% endblock %}

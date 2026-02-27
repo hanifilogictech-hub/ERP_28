@@ -1,0 +1,288 @@
+{% extends "base_layout.html" %}
+
+{% block page_heading %}
+<div class="po-heading-bar">
+  <h1>Add/Edit Stock Request</h1>
+</div>
+{% endblock %}
+
+{% block content %}
+<section class="po-editor-panel stock-request-form-panel">
+  <div class="po-editor-head stock-form-head">
+    <div class="po-editor-field">
+      <label for="sr_no">Stock Req No</label>
+      <input id="sr_no" type="text" value="{{ sr_next_no|default:'SR-00045' }}" readonly>
+    </div>
+    <div class="po-editor-field">
+      <label for="sr_date">Date</label>
+      <input id="sr_date" type="date" value="{{ sr_today }}">
+    </div>
+    <div class="po-editor-field">
+      <label for="sr_status">Status</label>
+      <select id="sr_status">
+        <option>Draft</option>
+        <option>Submitted</option>
+        <option>Approved</option>
+      </select>
+    </div>
+    <div class="po-editor-field">
+      <label for="sr_from_location">From Location</label>
+      <select id="sr_from_location">
+        {% for location in sr_locations %}
+        <option value="{{ location }}" {% if forloop.first %}selected{% endif %}>{{ location }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="po-editor-field">
+      <label for="sr_to_location">To Location</label>
+      <select id="sr_to_location">
+        {% for location in sr_locations %}
+        <option value="{{ location }}" {% if not forloop.first %}{% if forloop.counter == 2 %}selected{% endif %}{% endif %}>{{ location }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="po-editor-field">
+      <label for="sr_remarks">Remarks</label>
+      <input id="sr_remarks" type="text" placeholder="Remarks">
+    </div>
+  </div>
+
+  <div class="stock-add-row">
+    <button type="button" class="po-editor-save stock-add-btn" id="sr-add-product-btn">+ Add Product</button>
+  </div>
+
+  <table class="po-editor-table stock-product-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Product</th>
+        <th>Available Stock</th>
+        <th>Carton</th>
+        <th>Loose</th>
+        <th>Total Qty</th>
+      </tr>
+    </thead>
+    <tbody id="sr-product-tbody">
+      <tr>
+        <td>1</td>
+        <td>
+          <select class="sr-product-select">
+            {% for p in sr_products %}
+            <option value="{{ p.code }}" {% if forloop.first %}selected{% endif %}>{{ p.name }}</option>
+            {% empty %}
+            <option value="">No products found</option>
+            {% endfor %}
+          </select>
+        </td>
+        <td class="sr-stock">0</td>
+        <td><input type="number" class="sr-carton" min="0" step="1" value="0"></td>
+        <td><input type="number" class="sr-loose" min="0" step="1" value="0"></td>
+        <td><input type="number" class="sr-total" value="0" readonly></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="po-editor-buttons">
+    <a href="{% url 'stock_request' %}" class="po-editor-cancel stock-link-btn">Back</a>
+    <button type="button" class="po-editor-cancel" id="sr-save-btn">Save</button>
+    <button type="button" class="po-editor-save" id="sr-submit-btn">Submit</button>
+    <button type="button" class="po-editor-cancel" id="sr-cancel-btn">Cancel</button>
+  </div>
+</section>
+
+{{ sr_products|json_script:"sr-products-data" }}
+{{ sr_stock_by_location|json_script:"sr-stock-map-data" }}
+<script>
+  (function () {
+    var addBtn = document.getElementById("sr-add-product-btn");
+    var tbody = document.getElementById("sr-product-tbody");
+    var fromLocationEl = document.getElementById("sr_from_location");
+    if (!addBtn || !tbody) return;
+
+    var products = [];
+    var stockByLocation = {};
+    try {
+      products = JSON.parse((document.getElementById("sr-products-data") || {}).textContent || "[]");
+    } catch (_error) {
+      products = [];
+    }
+    try {
+      stockByLocation = JSON.parse((document.getElementById("sr-stock-map-data") || {}).textContent || "{}");
+    } catch (_error) {
+      stockByLocation = {};
+    }
+
+    function toNumber(value) {
+      var n = parseFloat(value);
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    function recalcRow(row) {
+      var carton = toNumber((row.querySelector(".sr-carton") || {}).value);
+      var loose = toNumber((row.querySelector(".sr-loose") || {}).value);
+      var total = (carton * 12) + loose;
+      var totalInput = row.querySelector(".sr-total");
+      if (totalInput) totalInput.value = String(total);
+    }
+
+    function updateRowStock(row) {
+      var productSelect = row.querySelector(".sr-product-select");
+      var stockCell = row.querySelector(".sr-stock");
+      var fromLocation = (fromLocationEl || {}).value || "";
+      var productCode = (productSelect || {}).value || "";
+      var key = fromLocation + "|" + productCode;
+      var stock = Number(stockByLocation[key] || 0);
+      if (stockCell) stockCell.textContent = String(stock);
+    }
+
+    function renumberRows() {
+      Array.from(tbody.querySelectorAll("tr")).forEach(function (row, index) {
+        if (row.cells[0]) row.cells[0].textContent = String(index + 1);
+      });
+    }
+
+    function buildRow(index) {
+      var optionHtml = products.map(function (p) {
+        var code = String((p || {}).code || "");
+        var name = String((p || {}).name || "");
+        return "<option value='" + code.replace(/'/g, "&#39;") + "'>" + name.replace(/</g, "&lt;").replace(/>/g, "&gt;") + "</option>";
+      }).join("");
+      if (!optionHtml) {
+        optionHtml = "<option value=''>No products found</option>";
+      }
+      var tr = document.createElement("tr");
+      tr.innerHTML =
+        "<td></td>" +
+        "<td><select class='sr-product-select'>" + optionHtml + "</select></td>" +
+        "<td class='sr-stock'>0</td>" +
+        "<td><input type='number' class='sr-carton' min='0' step='1' value='0'></td>" +
+        "<td><input type='number' class='sr-loose' min='0' step='1' value='0'></td>" +
+        "<td><input type='number' class='sr-total' value='0' readonly></td>";
+      return tr;
+    }
+
+    addBtn.addEventListener("click", function () {
+      var row = buildRow(tbody.rows.length);
+      tbody.appendChild(row);
+      renumberRows();
+      recalcRow(row);
+      updateRowStock(row);
+    });
+
+    tbody.addEventListener("input", function (event) {
+      if (event.target.classList.contains("sr-carton") || event.target.classList.contains("sr-loose")) {
+        var row = event.target.closest("tr");
+        if (row) recalcRow(row);
+      }
+    });
+
+    tbody.addEventListener("change", function (event) {
+      if (event.target.classList.contains("sr-product-select")) {
+        var row = event.target.closest("tr");
+        if (row) updateRowStock(row);
+      }
+    });
+    if (fromLocationEl) {
+      fromLocationEl.addEventListener("change", function () {
+        Array.from(tbody.querySelectorAll("tr")).forEach(function (row) {
+          updateRowStock(row);
+        });
+      });
+    }
+
+    async function postJson(url, payload) {
+      var response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload || {})
+      });
+      var data = {};
+      try {
+        data = await response.json();
+      } catch (_error) {
+        data = {};
+      }
+      if (!response.ok || data.ok === false) {
+        throw new Error(data.error || "Request failed.");
+      }
+      return data;
+    }
+
+    function collectItems() {
+      return Array.from(tbody.querySelectorAll("tr")).map(function (row) {
+        var productSelect = row.querySelector(".sr-product-select");
+        var productCode = (productSelect || {}).value || "";
+        var productName = "";
+        if (productSelect && productSelect.selectedIndex >= 0) {
+          productName = productSelect.options[productSelect.selectedIndex].text || "";
+        }
+        return {
+          product_code: productCode,
+          product_name: String(productName).trim(),
+          carton_qty: toNumber((row.querySelector(".sr-carton") || {}).value),
+          loose_qty: toNumber((row.querySelector(".sr-loose") || {}).value),
+          total_qty: toNumber((row.querySelector(".sr-total") || {}).value)
+        };
+      }).filter(function (item) {
+        return item.total_qty > 0;
+      });
+    }
+
+    async function saveRequest(statusValue) {
+      var fromLocation = (document.getElementById("sr_from_location") || {}).value || "";
+      var toLocation = (document.getElementById("sr_to_location") || {}).value || "";
+      if (!fromLocation || !toLocation) {
+        window.alert("Select both From and To locations.");
+        return;
+      }
+      if (fromLocation === toLocation) {
+        window.alert("From and To locations must be different.");
+        return;
+      }
+
+      var payload = {
+        request_no: (document.getElementById("sr_no") || {}).value || "",
+        request_date: (document.getElementById("sr_date") || {}).value || "",
+        from_location: fromLocation,
+        to_location: toLocation,
+        remarks: (document.getElementById("sr_remarks") || {}).value || "",
+        status: statusValue,
+        items: collectItems()
+      };
+
+      try {
+        var response = await postJson("{% url 'sr_save_api' %}", payload);
+        window.alert("Saved: " + response.request_no + " (" + response.status + ")");
+        window.location.href = "{% url 'stock_request' %}";
+      } catch (error) {
+        window.alert(error.message || "Unable to save stock request.");
+      }
+    }
+
+    var saveBtn = document.getElementById("sr-save-btn");
+    var submitBtn = document.getElementById("sr-submit-btn");
+    var cancelBtn = document.getElementById("sr-cancel-btn");
+
+    if (saveBtn) {
+      saveBtn.addEventListener("click", function () {
+        saveRequest("Draft");
+      });
+    }
+    if (submitBtn) {
+      submitBtn.addEventListener("click", function () {
+        saveRequest("Pending Approval");
+      });
+    }
+    if (cancelBtn) {
+      cancelBtn.addEventListener("click", function () {
+        window.location.href = "{% url 'stock_request' %}";
+      });
+    }
+
+    Array.from(tbody.querySelectorAll("tr")).forEach(function (row) {
+      recalcRow(row);
+      updateRowStock(row);
+    });
+  })();
+</script>
+{% endblock %}

@@ -1,0 +1,116 @@
+:root {
+  --bg: #cfd4da;
+  --panel: #e5e7ea;
+  --card: #f4f4f5;
+  --line: #d4d7db;
+  --text: #1a273f;
+  --muted: #5f6672;
+  --accent: #14bfa2;
+  --btn: #2f95e5;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Manrope", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.head-strip {
+  height: 40px;
+  background: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px;
+}
+
+.head-left, .head-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 15px;
+  color: #0b171c;
+}
+
+.head-company { font-weight: 500; }
+
+.settings-body {
+  padding: 6px 8px 12px;
+}
+
+.settings-body h1 {
+  margin: 0 0 6px;
+  font-size: 28px;
+  font-weight: 700;
+  color: #253658;
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.setting-card {
+  background: var(--panel);
+  border: 1px solid #cfd3d8;
+  box-shadow: 0 3px 10px rgba(29, 38, 50, 0.08);
+  padding: 10px;
+}
+
+.inner {
+  border: 2px solid var(--line);
+  min-height: 98px;
+  text-align: center;
+  padding: 6px 6px 10px;
+}
+
+.inner h3 {
+  margin: 0;
+  font-size: 28px;
+  line-height: 1.1;
+  color: #000;
+}
+
+.inner h3 br + * { font-size: 22px; }
+
+.inner p {
+  margin: 6px 0 12px;
+  font-size: 11px;
+  color: #111;
+}
+
+.inner a {
+  display: inline-block;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--btn);
+  color: #fff;
+  text-decoration: none;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+}
+
+.settings-footer {
+  text-align: center;
+  color: #7b8695;
+  font-size: 11px;
+  padding: 6px 0 10px;
+}
+
+@media (max-width: 1100px) {
+  .settings-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 820px) {
+  .settings-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 560px) {
+  .settings-grid { grid-template-columns: 1fr; }
+  .settings-body h1 { font-size: 22px; }
+}

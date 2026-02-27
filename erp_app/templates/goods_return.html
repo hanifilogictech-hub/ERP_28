@@ -1,0 +1,496 @@
+{% extends "base_layout.html" %}
+
+{% block page_heading %}
+<div class="po-heading-bar">
+  <h1>Goods Return Management</h1>
+  <button type="button" class="po-new-btn" id="gor-open-editor-btn">New Transaction</button>
+</div>
+{% endblock %}
+
+{% block content %}
+{{ gor_receipts|json_script:"gor-receipts-data" }}
+
+<section class="purchase-window purchase-order-window goods-receipt-window goods-return-window" id="gor-list-view">
+  <div class="doc-body">
+    <div class="gr-row">
+      <div class="gr-field-group">
+        <label class="po-label" for="gor_filter_tran_no">Tran No</label>
+        <input id="gor_filter_tran_no" class="po-no-input" type="text" placeholder="Tran No">
+      </div>
+      <div class="gr-field-group">
+        <label class="po-label" for="gor_filter_from_date">From Date</label>
+        <input id="gor_filter_from_date" class="po-field-date" type="date">
+      </div>
+      <div class="gr-field-group">
+        <label class="po-label" for="gor_filter_to_date">To Date</label>
+        <input id="gor_filter_to_date" class="po-field-date" type="date">
+      </div>
+      <div class="gr-field-group">
+        <label class="po-label" for="gor_filter_status">Status</label>
+        <select id="gor_filter_status" class="po-field-select">
+          <option value="">Status</option>
+          <option selected>Open</option>
+          <option>Pending Vendor Confirmation</option>
+          <option>Approved</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="gr-row">
+      <div class="gr-field-group">
+        <label class="po-label" for="gor_filter_location">Select To Location</label>
+        <select id="gor_filter_location" class="po-field-select">
+          <option value="">Select To Location</option>
+          {% for warehouse in gor_warehouses %}
+          <option value="{{ warehouse }}">{{ warehouse }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="gr-field-group">
+        <label class="po-label" for="gor_filter_supplier">Select All Suppliers</label>
+        <select id="gor_filter_supplier" class="po-field-select">
+          <option value="">Select All Suppliers</option>
+          {% for supplier in gor_suppliers %}
+          <option value="{{ supplier.name }}">{{ supplier.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="gr-field-group">
+        <label class="po-label" for="gor_filter_invoice_no">Invoice No</label>
+        <input id="gor_filter_invoice_no" class="po-no-input" type="text" placeholder="Invoice No">
+      </div>
+      <div class="gr-actions">
+        <button type="button" id="gor-search-btn" class="po-search-btn" title="Search" aria-label="Search">&#128269;</button>
+        <button type="button" class="gr-icon-btn" title="Print" aria-label="Print">&#128424;</button>
+        <button type="button" class="gr-icon-btn gr-delete-btn" title="Delete" aria-label="Delete">&#128465;</button>
+      </div>
+    </div>
+
+    <table class="doc-table po-items-table gr-items-table">
+      <colgroup>
+        <col style="width:4%">
+        <col style="width:12%">
+        <col style="width:12%">
+        <col style="width:17%">
+        <col style="width:12%">
+        <col style="width:13%">
+        <col style="width:10%">
+        <col style="width:8%">
+        <col style="width:12%">
+      </colgroup>
+      <thead>
+        <tr>
+          <th><input type="checkbox" aria-label="Select all"></th>
+          <th>Tran No</th>
+          <th>Tran Date</th>
+          <th>Supplier</th>
+          <th>Status</th>
+          <th>InvoiceNo</th>
+          <th>SubTotal</th>
+          <th>Tax</th>
+          <th>NetTotal</th>
+        </tr>
+      </thead>
+      <tbody id="gor-list-tbody">
+        {% if gor_rows %}
+        {% for row in gor_rows %}
+        <tr data-location="{{ row.location }}" data-date="{{ row.tran_date }}">
+          <td><input type="checkbox" aria-label="Select row"></td>
+          <td>{{ row.return_no }}</td>
+          <td>{{ row.tran_date }}</td>
+          <td>{{ row.supplier }}</td>
+          <td><span class="po-status-pill">{{ row.status }}</span></td>
+          <td>{{ row.invoice_no }}</td>
+          <td>{{ row.sub_total|floatformat:2 }}</td>
+          <td>{{ row.tax|floatformat:2 }}</td>
+          <td>{{ row.net_total|floatformat:2 }}</td>
+        </tr>
+        {% endfor %}
+        {% else %}
+        <tr class="gr-empty-row">
+          <td colspan="9">No data available in table</td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="po-editor-panel gr-editor-panel gor-editor-panel" id="gor-editor-view" hidden>
+  <h2>Add/Edit Goods Return</h2>
+  <div class="po-editor-head gr-editor-head">
+    <div class="po-editor-field">
+      <label for="gor_return_no">Return No</label>
+      <input id="gor_return_no" type="text" readonly>
+    </div>
+    <div class="po-editor-field">
+      <label for="gor_return_date">Return Date</label>
+      <input id="gor_return_date" type="date" value="{{ gor_today }}">
+    </div>
+    <div class="po-editor-field">
+      <label for="gor_gr_no">Source GR No</label>
+      <select id="gor_gr_no">
+        <option value="">Select Goods Receipt</option>
+        {% for gr in gor_receipts %}
+        <option value="{{ gr.gr_no }}">{{ gr.gr_no }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="po-editor-field">
+      <label for="gor_invoice_no">Invoice No</label>
+      <input id="gor_invoice_no" type="text" placeholder="Invoice No">
+    </div>
+    <div class="po-editor-field">
+      <label for="gor_location">Location</label>
+      <select id="gor_location">
+        <option value="">Select Location</option>
+        {% for warehouse in gor_warehouses %}
+        <option value="{{ warehouse }}">{{ warehouse }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="po-editor-field">
+      <label for="gor_supplier_name">Supplier</label>
+      <input id="gor_supplier_name" type="text" readonly>
+    </div>
+  </div>
+
+  <table class="po-editor-table gr-editor-table">
+    <thead>
+      <tr>
+        <th>S No</th>
+        <th>Product</th>
+        <th>Accepted Qty</th>
+        <th>Already Returned</th>
+        <th>Returnable Qty</th>
+        <th>Return Qty</th>
+        <th>Reason</th>
+        <th>Condition</th>
+      </tr>
+    </thead>
+    <tbody id="gor-editor-tbody">
+      <tr>
+        <td colspan="8">Select a Goods Receipt to load items.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="po-editor-footer">
+    <div>Subtotal: <strong id="gor_subtotal">0.00</strong></div>
+    <div>Tax: <strong id="gor_tax_total">0.00</strong></div>
+    <div class="po-editor-net">Net Total: <strong id="gor_net_total">0.00</strong></div>
+  </div>
+
+  <div class="po-editor-buttons">
+    <button type="button" id="gor-cancel-editor-btn" class="po-editor-cancel">Cancel</button>
+    <button type="button" id="gor-save-editor-btn" class="po-editor-save">Save Return</button>
+    <button type="button" id="gor-approve-editor-btn" class="po-editor-save">Approve Return</button>
+  </div>
+</section>
+
+<script>
+  (function () {
+    var listView = document.getElementById("gor-list-view");
+    var editorView = document.getElementById("gor-editor-view");
+    var headingBar = document.querySelector(".po-heading-bar");
+    var openEditorBtn = document.getElementById("gor-open-editor-btn");
+    var cancelEditorBtn = document.getElementById("gor-cancel-editor-btn");
+    var saveEditorBtn = document.getElementById("gor-save-editor-btn");
+    var approveEditorBtn = document.getElementById("gor-approve-editor-btn");
+    var grNoSelect = document.getElementById("gor_gr_no");
+    var returnNoInput = document.getElementById("gor_return_no");
+    var returnDateInput = document.getElementById("gor_return_date");
+    var invoiceInput = document.getElementById("gor_invoice_no");
+    var locationInput = document.getElementById("gor_location");
+    var supplierInput = document.getElementById("gor_supplier_name");
+    var editorBody = document.getElementById("gor-editor-tbody");
+    var listBody = document.getElementById("gor-list-tbody");
+    var subtotalEl = document.getElementById("gor_subtotal");
+    var taxEl = document.getElementById("gor_tax_total");
+    var netEl = document.getElementById("gor_net_total");
+
+    var filterTranNo = document.getElementById("gor_filter_tran_no");
+    var filterFromDate = document.getElementById("gor_filter_from_date");
+    var filterToDate = document.getElementById("gor_filter_to_date");
+    var filterStatus = document.getElementById("gor_filter_status");
+    var filterLocation = document.getElementById("gor_filter_location");
+    var filterSupplier = document.getElementById("gor_filter_supplier");
+    var filterInvoice = document.getElementById("gor_filter_invoice_no");
+    var searchBtn = document.getElementById("gor-search-btn");
+
+    if (!listView || !editorView || !editorBody || !listBody) return;
+
+    var apiUrls = {
+      grDetails: "{% url 'gor_gr_details_api' %}",
+      save: "{% url 'gor_save_api' %}",
+      approve: "{% url 'gor_approve_api' %}"
+    };
+    var savedReturnNo = "";
+
+    function toNumber(value) {
+      var num = parseFloat(value);
+      return Number.isFinite(num) ? num : 0;
+    }
+
+    function showEditor(show) {
+      listView.hidden = !!show;
+      editorView.hidden = !show;
+      if (headingBar) headingBar.hidden = !!show;
+    }
+
+    function nextReturnNo() {
+      var max = 100;
+      Array.from(listBody.querySelectorAll("tr")).forEach(function (row) {
+        var cell = row.cells[1];
+        if (!cell) return;
+        var text = (cell.textContent || "").trim();
+        var match = text.match(/^RTN-(\d+)$/i);
+        if (match) max = Math.max(max, parseInt(match[1], 10));
+      });
+      return "RTN-" + (max + 1);
+    }
+
+    async function getJson(url) {
+      var response = await fetch(url, { method: "GET" });
+      var data = {};
+      try {
+        data = await response.json();
+      } catch (_error) {
+        data = {};
+      }
+      if (!response.ok || data.ok === false) throw new Error(data.error || "Request failed.");
+      return data;
+    }
+
+    async function postJson(url, payload) {
+      var response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload || {})
+      });
+      var data = {};
+      try {
+        data = await response.json();
+      } catch (_error) {
+        data = {};
+      }
+      if (!response.ok || data.ok === false) throw new Error(data.error || "Request failed.");
+      return data;
+    }
+
+    function clearEditorRows(message) {
+      editorBody.innerHTML = "<tr><td colspan='8'>" + (message || "No items") + "</td></tr>";
+      subtotalEl.textContent = "0.00";
+      taxEl.textContent = "0.00";
+      netEl.textContent = "0.00";
+    }
+
+    function updateTotals() {
+      var subtotal = 0;
+      var tax = 0;
+      Array.from(editorBody.querySelectorAll("tr[data-gr-item-id]")).forEach(function (row) {
+        var qty = toNumber((row.querySelector(".gor-qty") || {}).value);
+        var maxQty = toNumber(row.dataset.returnableQty || 0);
+        if (qty > maxQty) qty = maxQty;
+        if (qty < 0) qty = 0;
+        if (row.querySelector(".gor-qty")) row.querySelector(".gor-qty").value = qty.toFixed(2);
+        var unitPrice = toNumber(row.dataset.unitPrice || 0);
+        var taxPct = toNumber(row.dataset.taxPercent || 0);
+        var lineTotal = qty * unitPrice;
+        subtotal += lineTotal;
+        tax += lineTotal * (taxPct / 100);
+      });
+      subtotalEl.textContent = subtotal.toFixed(2);
+      taxEl.textContent = tax.toFixed(2);
+      netEl.textContent = (subtotal + tax).toFixed(2);
+      return { subtotal: subtotal, tax: tax, net: subtotal + tax };
+    }
+
+    function renderItems(items) {
+      if (!items || !items.length) {
+        clearEditorRows("No GR items found.");
+        return;
+      }
+      editorBody.innerHTML = "";
+      items.forEach(function (item, idx) {
+        var row = document.createElement("tr");
+        row.dataset.grItemId = String(item.gr_item_id || "");
+        row.dataset.returnableQty = String(item.returnable_qty || 0);
+        row.dataset.unitPrice = String(item.unit_price || 0);
+        row.dataset.taxPercent = String(item.tax_percent || 0);
+        row.innerHTML =
+          "<td>" + (idx + 1) + "</td>" +
+          "<td>" + (item.product_name || "") + "</td>" +
+          "<td>" + toNumber(item.accepted_qty).toFixed(2) + "</td>" +
+          "<td>" + toNumber(item.already_returned_qty).toFixed(2) + "</td>" +
+          "<td>" + toNumber(item.returnable_qty).toFixed(2) + "</td>" +
+          "<td><input class='gor-qty' type='number' min='0' step='0.01' value='0'></td>" +
+          "<td><select class='gor-reason'><option>Damaged</option><option>Wrong Item</option><option>Excess</option><option>Expired</option><option>Quality Fail</option><option>Other</option></select></td>" +
+          "<td><select class='gor-condition'><option>Damaged</option><option>Opened</option><option>Expired</option><option>Wrong Item</option><option>Other</option></select></td>";
+        editorBody.appendChild(row);
+      });
+      updateTotals();
+    }
+
+    async function loadGrDetails() {
+      var grNo = (grNoSelect.value || "").trim();
+      if (!grNo) {
+        clearEditorRows("Select a Goods Receipt to load items.");
+        return;
+      }
+      try {
+        var data = await getJson(apiUrls.grDetails + "?gr_no=" + encodeURIComponent(grNo));
+        var gr = data.gr || {};
+        supplierInput.value = gr.supplier || "";
+        if (!invoiceInput.value) invoiceInput.value = gr.invoice_no || "";
+        if (!locationInput.value) locationInput.value = gr.location || "";
+        renderItems(gr.items || []);
+      } catch (error) {
+        clearEditorRows(error.message || "Unable to fetch GR details.");
+      }
+    }
+
+    function buildPayload(status) {
+      var items = [];
+      Array.from(editorBody.querySelectorAll("tr[data-gr-item-id]")).forEach(function (row) {
+        items.push({
+          gr_item_id: parseInt(row.dataset.grItemId || "0", 10),
+          quantity: toNumber((row.querySelector(".gor-qty") || {}).value),
+          reason: (row.querySelector(".gor-reason") || {}).value || "",
+          condition: (row.querySelector(".gor-condition") || {}).value || ""
+        });
+      });
+      return {
+        return_no: (returnNoInput.value || "").trim(),
+        gr_no: (grNoSelect.value || "").trim(),
+        return_date: returnDateInput.value || "",
+        invoice_no: (invoiceInput.value || "").trim(),
+        location: (locationInput.value || "").trim(),
+        status: status || "Pending Vendor Confirmation",
+        items: items
+      };
+    }
+
+    function prependListRow(payload, saveResp, statusValue) {
+      var emptyRow = listBody.querySelector(".gr-empty-row");
+      if (emptyRow) emptyRow.remove();
+      var row = document.createElement("tr");
+      row.dataset.location = payload.location || "";
+      row.dataset.date = payload.return_date || "";
+      row.innerHTML =
+        "<td><input type='checkbox' aria-label='Select row'></td>" +
+        "<td>" + (saveResp.return_no || payload.return_no || "") + "</td>" +
+        "<td>" + (payload.return_date || "") + "</td>" +
+        "<td>" + (supplierInput.value || "") + "</td>" +
+        "<td><span class='po-status-pill'>" + (statusValue || saveResp.status || "") + "</span></td>" +
+        "<td>" + (payload.invoice_no || "") + "</td>" +
+        "<td>" + toNumber(saveResp.subtotal).toFixed(2) + "</td>" +
+        "<td>" + toNumber(saveResp.tax).toFixed(2) + "</td>" +
+        "<td>" + toNumber(saveResp.net_total).toFixed(2) + "</td>";
+      listBody.insertAdjacentElement("afterbegin", row);
+    }
+
+    function updateTopRowStatus(returnNo, newStatus) {
+      Array.from(listBody.querySelectorAll("tr")).forEach(function (row) {
+        if (!row.cells[1]) return;
+        if ((row.cells[1].textContent || "").trim() === returnNo && row.cells[4]) {
+          row.cells[4].innerHTML = "<span class='po-status-pill'>" + newStatus + "</span>";
+        }
+      });
+    }
+
+    function filterRows() {
+      var tranNo = (filterTranNo.value || "").trim().toLowerCase();
+      var fromDate = filterFromDate.value || "";
+      var toDate = filterToDate.value || "";
+      var status = (filterStatus.value || "").trim().toLowerCase();
+      var location = (filterLocation.value || "").trim().toLowerCase();
+      var supplier = (filterSupplier.value || "").trim().toLowerCase();
+      var invoice = (filterInvoice.value || "").trim().toLowerCase();
+
+      Array.from(listBody.querySelectorAll("tr")).forEach(function (row) {
+        if (row.classList.contains("gr-empty-row")) return;
+        var rowTran = (row.cells[1] ? row.cells[1].textContent : "").trim().toLowerCase();
+        var rowDate = (row.dataset.date || "").trim();
+        var rowSupplier = (row.cells[3] ? row.cells[3].textContent : "").trim().toLowerCase();
+        var rowStatus = (row.cells[4] ? row.cells[4].textContent : "").trim().toLowerCase();
+        var rowInvoice = (row.cells[5] ? row.cells[5].textContent : "").trim().toLowerCase();
+        var rowLocation = (row.dataset.location || "").trim().toLowerCase();
+
+        var tranMatch = !tranNo || rowTran.indexOf(tranNo) > -1;
+        var statusMatch = !status || rowStatus.indexOf(status) > -1;
+        var supplierMatch = !supplier || rowSupplier.indexOf(supplier) > -1;
+        var invoiceMatch = !invoice || rowInvoice.indexOf(invoice) > -1;
+        var locationMatch = !location || rowLocation === location;
+        var fromMatch = !fromDate || (rowDate && rowDate >= fromDate);
+        var toMatch = !toDate || (rowDate && rowDate <= toDate);
+
+        row.style.display = tranMatch && statusMatch && supplierMatch && invoiceMatch && locationMatch && fromMatch && toMatch ? "" : "none";
+      });
+    }
+
+    function resetEditor() {
+      savedReturnNo = "";
+      returnNoInput.value = nextReturnNo();
+      returnDateInput.value = "{{ gor_today }}";
+      grNoSelect.value = "";
+      invoiceInput.value = "";
+      locationInput.value = "";
+      supplierInput.value = "";
+      clearEditorRows("Select a Goods Receipt to load items.");
+    }
+
+    openEditorBtn.addEventListener("click", function () {
+      resetEditor();
+      showEditor(true);
+    });
+
+    cancelEditorBtn.addEventListener("click", function () {
+      showEditor(false);
+    });
+
+    grNoSelect.addEventListener("change", function () {
+      loadGrDetails();
+      savedReturnNo = "";
+    });
+
+    editorBody.addEventListener("input", function (event) {
+      if (event.target.classList.contains("gor-qty")) updateTotals();
+    });
+
+    saveEditorBtn.addEventListener("click", async function () {
+      try {
+        var payload = buildPayload("Pending Vendor Confirmation");
+        var response = await postJson(apiUrls.save, payload);
+        savedReturnNo = response.return_no || payload.return_no || "";
+        returnNoInput.value = savedReturnNo;
+        prependListRow(payload, response, "Pending Vendor Confirmation");
+        showEditor(false);
+      } catch (error) {
+        window.alert(error.message || "Unable to save goods return.");
+      }
+    });
+
+    approveEditorBtn.addEventListener("click", async function () {
+      try {
+        var payload = buildPayload("Pending Vendor Confirmation");
+        var saveResp = null;
+        if (!savedReturnNo) {
+          saveResp = await postJson(apiUrls.save, payload);
+          savedReturnNo = saveResp.return_no || payload.return_no || "";
+          returnNoInput.value = savedReturnNo;
+          prependListRow(payload, saveResp, "Pending Vendor Confirmation");
+        }
+        var approveResp = await postJson(apiUrls.approve, { return_no: savedReturnNo });
+        updateTopRowStatus(savedReturnNo, approveResp.status || "Approved");
+        showEditor(false);
+        window.alert("Approved. Debit Note: " + (approveResp.debit_note_no || "-"));
+      } catch (error) {
+        window.alert(error.message || "Unable to approve goods return.");
+      }
+    });
+
+    if (searchBtn) searchBtn.addEventListener("click", filterRows);
+  })();
+</script>
+{% endblock %}

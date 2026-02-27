@@ -1,0 +1,124 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ERP Login</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .login-container {
+            background: #ffffff;
+            padding: 40px;
+            width: 350px;
+            border-radius: 12px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+
+        .logo {
+            width: 100px;
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            margin-bottom: 25px;
+            color: #333;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+            text-align: left;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            font-size: 14px;
+            transition: 0.3s;
+        }
+
+        input:focus {
+            border-color: #2a5298;
+            outline: none;
+            box-shadow: 0 0 5px rgba(42,82,152,0.3);
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #2a5298;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 15px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        button:hover {
+            background-color: #1e3c72;
+        }
+
+        .error {
+            color: red;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        .footer {
+            margin-top: 20px;
+            font-size: 12px;
+            color: #777;
+        }
+    </style>
+</head>
+<body>
+
+<div class="login-container">
+
+    <!-- Logo -->
+    <img src="{% static 'img/iLogic.jpg' %}" alt="Company Logo" class="logo">
+
+    <h2>ERP System Login</h2>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="error">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+
+    <form method="post">
+        {% csrf_token %}
+
+        <div class="form-group">
+            <input type="text" name="username" placeholder="Enter Username" required>
+        </div>
+
+        <div class="form-group">
+            <input type="password" name="password" placeholder="Enter Password" required>
+        </div>
+
+        <button type="submit">Login</button>
+    </form>
+
+    <div class="footer">
+        © iLogicTech.
+    </div>
+
+</div>
+
+</body>
+</html>

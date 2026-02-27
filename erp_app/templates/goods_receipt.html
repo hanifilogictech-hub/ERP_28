@@ -1,0 +1,497 @@
+{% extends "base_layout.html" %}
+
+{% block page_heading %}
+<div class="po-heading-bar">
+  <h1>Goods Receive Management</h1>
+  <button type="button" class="po-new-btn" id="gr-open-editor-btn">New Transaction</button>
+</div>
+{% endblock %}
+
+{% block content %}
+{{ gr_approved_pos|json_script:"gr-approved-pos-data" }}
+{{ gr_warehouses|json_script:"gr-warehouses-data" }}
+
+<section class="purchase-window purchase-order-window goods-receipt-window" id="gr-list-view">
+  <div class="doc-body">
+    <div class="gr-row">
+      <div class="gr-field-group">
+        <label class="po-label" for="gr_filter_tran_no">Transaction No</label>
+        <input id="gr_filter_tran_no" class="po-no-input" type="text" placeholder="Transaction No">
+      </div>
+      <div class="gr-field-group">
+        <label class="po-label" for="gr_filter_from_date">From Date</label>
+        <input id="gr_filter_from_date" class="po-field-date" type="date">
+      </div>
+      <div class="gr-field-group">
+        <label class="po-label" for="gr_filter_to_date">To Date</label>
+        <input id="gr_filter_to_date" class="po-field-date" type="date">
+      </div>
+      <div class="gr-field-group">
+        <label class="po-label" for="gr_filter_status">Status</label>
+        <select id="gr_filter_status" class="po-field-select">
+          <option value="">Select</option>
+          <option>Open</option>
+          <option>Completed</option>
+          <option>Partially Received</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="gr-row">
+      <div class="gr-field-group">
+        <label class="po-label" for="gr_filter_location">Location</label>
+        <select id="gr_filter_location" class="po-field-select">
+          <option value="">Select</option>
+          {% for warehouse in gr_warehouses %}
+          <option value="{{ warehouse }}">{{ warehouse }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="gr-field-group">
+        <label class="po-label" for="gr_filter_supplier">Supplier</label>
+        <select id="gr_filter_supplier" class="po-field-select">
+          <option value="">Select All Suppliers</option>
+          {% for supplier in gr_suppliers %}
+          <option value="{{ supplier.name }}">{{ supplier.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="gr-field-group">
+        <label class="po-label" for="gr_filter_invoice_no">Invoice No</label>
+        <input id="gr_filter_invoice_no" class="po-no-input" type="text" placeholder="Invoice No">
+      </div>
+      <div class="gr-actions">
+        <button type="button" id="gr-search-btn" class="po-search-btn" title="Search" aria-label="Search">&#128269;</button>
+        <button type="button" class="gr-icon-btn" title="Print" aria-label="Print">&#128424;</button>
+        <button type="button" class="gr-icon-btn gr-delete-btn" title="Delete" aria-label="Delete">&#128465;</button>
+      </div>
+    </div>
+
+    <table class="doc-table po-items-table gr-items-table">
+      <colgroup>
+        <col style="width:4%">
+        <col style="width:12%">
+        <col style="width:12%">
+        <col style="width:17%">
+        <col style="width:12%">
+        <col style="width:13%">
+        <col style="width:10%">
+        <col style="width:8%">
+        <col style="width:12%">
+      </colgroup>
+      <thead>
+        <tr>
+          <th><input type="checkbox" aria-label="Select all"></th>
+          <th>Tran No</th>
+          <th>Tran Date</th>
+          <th>Supplier</th>
+          <th>Status</th>
+          <th>InvoiceNo</th>
+          <th>SubTotal</th>
+          <th>Tax</th>
+          <th>NetTotal</th>
+        </tr>
+      </thead>
+      <tbody id="gr-list-tbody">
+        {% if gr_rows %}
+        {% for row in gr_rows %}
+        <tr data-location="" data-date="{{ row.tran_date }}">
+          <td><input type="checkbox" aria-label="Select row"></td>
+          <td>{{ row.gr_no }}</td>
+          <td>{{ row.tran_date }}</td>
+          <td>{{ row.supplier }}</td>
+          <td><span class="po-status-pill">{{ row.status }}</span></td>
+          <td>{{ row.invoice_no }}</td>
+          <td>{{ row.sub_total|floatformat:2 }}</td>
+          <td>{{ row.tax|floatformat:2 }}</td>
+          <td>{{ row.net_total|floatformat:2 }}</td>
+        </tr>
+        {% endfor %}
+        {% else %}
+        <tr class="gr-empty-row">
+          <td colspan="9">No data available in table</td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="po-editor-panel gr-editor-panel" id="gr-editor-view" hidden>
+  <h2>Add/Edit Goods Receipt</h2>
+  <div class="po-editor-head gr-editor-head">
+    <div class="po-editor-field">
+      <label for="gr_no">GR Number</label>
+      <input id="gr_no" type="text" readonly>
+    </div>
+    <div class="po-editor-field">
+      <label for="gr_receipt_date">Receipt Date</label>
+      <input id="gr_receipt_date" type="date" value="{{ gr_today }}">
+    </div>
+    <div class="po-editor-field">
+      <label for="gr_po_no">PO Number</label>
+      <select id="gr_po_no">
+        <option value="">Select Approved PO</option>
+        {% for po in gr_approved_pos %}
+        <option value="{{ po.po_no }}">{{ po.po_no }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="po-editor-field">
+      <label for="gr_invoice_no">Invoice No</label>
+      <input id="gr_invoice_no" type="text" placeholder="Invoice No">
+    </div>
+    <div class="po-editor-field">
+      <label for="gr_location">Location</label>
+      <select id="gr_location">
+        <option value="">Select Location</option>
+        {% for warehouse in gr_warehouses %}
+        <option value="{{ warehouse }}">{{ warehouse }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="po-editor-field">
+      <label for="gr_supplier_name">Supplier</label>
+      <input id="gr_supplier_name" type="text" readonly>
+    </div>
+  </div>
+
+  <table class="po-editor-table gr-editor-table">
+    <thead>
+      <tr>
+        <th>S No</th>
+        <th>Product</th>
+        <th>Ordered Qty</th>
+        <th>Already Received</th>
+        <th>Received Qty</th>
+        <th>Quality</th>
+        <th>Damaged Qty</th>
+        <th>Accepted Qty</th>
+        <th>Over Delivery</th>
+      </tr>
+    </thead>
+    <tbody id="gr-editor-tbody">
+      <tr>
+        <td colspan="9">Select an Approved PO to load items.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="po-editor-footer">
+    <div>Subtotal: <strong id="gr_subtotal">0.00</strong></div>
+    <div>Tax: <strong id="gr_tax_total">0.00</strong></div>
+    <div class="po-editor-net">Net Total: <strong id="gr_net_total">0.00</strong></div>
+  </div>
+
+  <div class="po-editor-buttons">
+    <button type="button" id="gr-cancel-editor-btn" class="po-editor-cancel">Cancel</button>
+    <button type="button" id="gr-save-editor-btn" class="po-editor-save">Save Receipt</button>
+  </div>
+</section>
+
+<script>
+  (function () {
+    var approvedPos = JSON.parse(document.getElementById("gr-approved-pos-data").textContent || "[]");
+    var listView = document.getElementById("gr-list-view");
+    var editorView = document.getElementById("gr-editor-view");
+    var headingBar = document.querySelector(".po-heading-bar");
+    var openEditorBtn = document.getElementById("gr-open-editor-btn");
+    var cancelEditorBtn = document.getElementById("gr-cancel-editor-btn");
+    var saveEditorBtn = document.getElementById("gr-save-editor-btn");
+    var grPoNo = document.getElementById("gr_po_no");
+    var grNo = document.getElementById("gr_no");
+    var grReceiptDate = document.getElementById("gr_receipt_date");
+    var grInvoiceNo = document.getElementById("gr_invoice_no");
+    var grLocation = document.getElementById("gr_location");
+    var grSupplier = document.getElementById("gr_supplier_name");
+    var editorBody = document.getElementById("gr-editor-tbody");
+    var listBody = document.getElementById("gr-list-tbody");
+    var subtotalEl = document.getElementById("gr_subtotal");
+    var taxEl = document.getElementById("gr_tax_total");
+    var netEl = document.getElementById("gr_net_total");
+    var searchBtn = document.getElementById("gr-search-btn");
+    var filterTranNo = document.getElementById("gr_filter_tran_no");
+    var filterFromDate = document.getElementById("gr_filter_from_date");
+    var filterToDate = document.getElementById("gr_filter_to_date");
+    var filterStatus = document.getElementById("gr_filter_status");
+    var filterLocation = document.getElementById("gr_filter_location");
+    var filterSupplier = document.getElementById("gr_filter_supplier");
+    var filterInvoice = document.getElementById("gr_filter_invoice_no");
+
+    if (!listView || !editorView || !openEditorBtn || !editorBody || !listBody) return;
+
+    var apiUrls = {
+      poDetails: "{% url 'gr_po_details_api' %}",
+      save: "{% url 'gr_save_api' %}"
+    };
+
+    function toNumber(value) {
+      var num = parseFloat(value);
+      return Number.isFinite(num) ? num : 0;
+    }
+
+    function showEditor(show) {
+      listView.hidden = !!show;
+      editorView.hidden = !show;
+      if (headingBar) headingBar.hidden = !!show;
+    }
+
+    function nextGrNumber() {
+      var max = 100;
+      Array.from(listBody.querySelectorAll("tr")).forEach(function (row) {
+        var cell = row.cells[1];
+        if (!cell) return;
+        var text = (cell.textContent || "").trim();
+        var match = text.match(/^GR-(\d+)$/i);
+        if (match) max = Math.max(max, parseInt(match[1], 10));
+      });
+      return "GR-" + (max + 1);
+    }
+
+    function updateTotals() {
+      var subtotal = 0;
+      var tax = 0;
+      Array.from(editorBody.querySelectorAll("tr[data-po-item-id]")).forEach(function (row) {
+        var ordered = toNumber(row.dataset.orderedQty);
+        var already = toNumber(row.dataset.alreadyReceivedQty);
+        var price = toNumber(row.dataset.unitPrice);
+        var taxPct = toNumber(row.dataset.taxPercent);
+        var receivedEl = row.querySelector(".gr-received-qty");
+        var damagedEl = row.querySelector(".gr-damaged-qty");
+        var qualityEl = row.querySelector(".gr-quality");
+        var acceptedEl = row.querySelector(".gr-accepted-qty");
+        var overEl = row.querySelector(".gr-over-flag");
+
+        var received = Math.max(toNumber(receivedEl ? receivedEl.value : 0), 0);
+        var damaged = Math.max(toNumber(damagedEl ? damagedEl.value : 0), 0);
+        var quality = qualityEl ? qualityEl.value : "Pass";
+        var accepted = quality === "Pass" ? Math.max(received - damaged, 0) : 0;
+        if (acceptedEl) acceptedEl.value = accepted.toFixed(2);
+        if (quality !== "Pass" && damagedEl && damaged <= 0) {
+          damagedEl.value = received.toFixed(2);
+        }
+        var isOver = already + received > ordered;
+        if (overEl) overEl.textContent = isOver ? "Yes" : "No";
+
+        var lineTotal = received * price;
+        subtotal += lineTotal;
+        tax += lineTotal * (taxPct / 100);
+      });
+
+      subtotalEl.textContent = subtotal.toFixed(2);
+      taxEl.textContent = tax.toFixed(2);
+      netEl.textContent = (subtotal + tax).toFixed(2);
+      return { subtotal: subtotal, tax: tax, net: subtotal + tax };
+    }
+
+    async function getJson(url) {
+      var response = await fetch(url, { method: "GET" });
+      var data = {};
+      try {
+        data = await response.json();
+      } catch (_error) {
+        data = {};
+      }
+      if (!response.ok || data.ok === false) {
+        throw new Error(data.error || "Request failed.");
+      }
+      return data;
+    }
+
+    async function postJson(url, payload) {
+      var response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload || {})
+      });
+      var data = {};
+      try {
+        data = await response.json();
+      } catch (_error) {
+        data = {};
+      }
+      if (!response.ok || data.ok === false) {
+        throw new Error(data.error || "Request failed.");
+      }
+      return data;
+    }
+
+    function clearEditorRows(message) {
+      editorBody.innerHTML = "<tr><td colspan='9'>" + (message || "No items") + "</td></tr>";
+      updateTotals();
+    }
+
+    function renderPoItems(items) {
+      if (!items || !items.length) {
+        clearEditorRows("No PO items found.");
+        return;
+      }
+      editorBody.innerHTML = "";
+      items.forEach(function (item, index) {
+        var row = document.createElement("tr");
+        row.dataset.poItemId = String(item.po_item_id || "");
+        row.dataset.orderedQty = String(item.ordered_qty || 0);
+        row.dataset.alreadyReceivedQty = String(item.already_received_qty || 0);
+        row.dataset.unitPrice = String(item.unit_price || 0);
+        row.dataset.taxPercent = String(item.tax_percent || 0);
+        row.innerHTML =
+          "<td>" + (index + 1) + "</td>" +
+          "<td>" + (item.product_name || "") + "</td>" +
+          "<td>" + toNumber(item.ordered_qty).toFixed(2) + "</td>" +
+          "<td>" + toNumber(item.already_received_qty).toFixed(2) + "</td>" +
+          "<td><input class='gr-received-qty' type='number' min='0' step='0.01' value='" + toNumber(item.remaining_qty).toFixed(2) + "'></td>" +
+          "<td><select class='gr-quality'><option>Pass</option><option>Fail</option><option>Damaged</option></select></td>" +
+          "<td><input class='gr-damaged-qty' type='number' min='0' step='0.01' value='0'></td>" +
+          "<td><input class='gr-accepted-qty' type='number' readonly value='0.00'></td>" +
+          "<td class='gr-over-flag'>No</td>";
+        editorBody.appendChild(row);
+      });
+      updateTotals();
+    }
+
+    async function loadPoDetails() {
+      var poNo = (grPoNo.value || "").trim();
+      if (!poNo) {
+        clearEditorRows("Select an Approved PO to load items.");
+        grSupplier.value = "";
+        return;
+      }
+      try {
+        var data = await getJson(apiUrls.poDetails + "?po_no=" + encodeURIComponent(poNo));
+        var po = data.po || {};
+        grSupplier.value = po.supplier || "";
+        if (!grLocation.value && po.warehouse) grLocation.value = po.warehouse;
+        if (!grInvoiceNo.value) grInvoiceNo.value = po.po_no || "";
+        renderPoItems(po.items || []);
+      } catch (error) {
+        clearEditorRows(error.message || "Unable to fetch PO details.");
+      }
+    }
+
+    function addListRow(payload, response) {
+      var emptyRow = listBody.querySelector(".gr-empty-row");
+      if (emptyRow) emptyRow.remove();
+      var row = document.createElement("tr");
+      row.dataset.location = payload.location || "";
+      row.dataset.date = payload.receipt_date || "";
+      row.innerHTML =
+        "<td><input type='checkbox' aria-label='Select row'></td>" +
+        "<td>" + (response.gr_no || "") + "</td>" +
+        "<td>" + (payload.receipt_date || "") + "</td>" +
+        "<td>" + (grSupplier.value || "") + "</td>" +
+        "<td><span class='po-status-pill'>" + (response.po_status || "Partially Received") + "</span></td>" +
+        "<td>" + (payload.invoice_no || "") + "</td>" +
+        "<td>" + toNumber(response.subtotal).toFixed(2) + "</td>" +
+        "<td>" + toNumber(response.tax).toFixed(2) + "</td>" +
+        "<td>" + toNumber(response.net_total).toFixed(2) + "</td>";
+      listBody.insertAdjacentElement("afterbegin", row);
+    }
+
+    function filterRows() {
+      var tranNo = (filterTranNo.value || "").trim().toLowerCase();
+      var fromDate = filterFromDate.value || "";
+      var toDate = filterToDate.value || "";
+      var status = (filterStatus.value || "").trim().toLowerCase();
+      var location = (filterLocation.value || "").trim().toLowerCase();
+      var supplier = (filterSupplier.value || "").trim().toLowerCase();
+      var invoice = (filterInvoice.value || "").trim().toLowerCase();
+
+      Array.from(listBody.querySelectorAll("tr")).forEach(function (row) {
+        if (row.classList.contains("gr-empty-row")) return;
+        var rowTran = (row.cells[1] ? row.cells[1].textContent : "").trim().toLowerCase();
+        var rowDate = (row.dataset.date || "").trim();
+        var rowSupplier = (row.cells[3] ? row.cells[3].textContent : "").trim().toLowerCase();
+        var rowStatus = (row.cells[4] ? row.cells[4].textContent : "").trim().toLowerCase();
+        var rowInvoice = (row.cells[5] ? row.cells[5].textContent : "").trim().toLowerCase();
+        var rowLocation = (row.dataset.location || "").trim().toLowerCase();
+
+        var tranMatch = !tranNo || rowTran.indexOf(tranNo) > -1;
+        var statusMatch = !status || rowStatus.indexOf(status) > -1;
+        var supplierMatch = !supplier || rowSupplier.indexOf(supplier) > -1;
+        var invoiceMatch = !invoice || rowInvoice.indexOf(invoice) > -1;
+        var locationMatch = !location || rowLocation === location;
+        var fromMatch = !fromDate || (rowDate && rowDate >= fromDate);
+        var toMatch = !toDate || (rowDate && rowDate <= toDate);
+
+        row.style.display = tranMatch && statusMatch && supplierMatch && invoiceMatch && locationMatch && fromMatch && toMatch ? "" : "none";
+      });
+    }
+
+    function resetEditor() {
+      grNo.value = nextGrNumber();
+      grPoNo.value = "";
+      grReceiptDate.value = "{{ gr_today }}";
+      grInvoiceNo.value = "";
+      grLocation.value = "";
+      grSupplier.value = "";
+      clearEditorRows("Select an Approved PO to load items.");
+    }
+
+    openEditorBtn.addEventListener("click", function () {
+      resetEditor();
+      showEditor(true);
+    });
+
+    cancelEditorBtn.addEventListener("click", function () {
+      showEditor(false);
+    });
+
+    grPoNo.addEventListener("change", function () {
+      loadPoDetails();
+    });
+
+    editorBody.addEventListener("input", function (event) {
+      if (
+        event.target.classList.contains("gr-received-qty") ||
+        event.target.classList.contains("gr-damaged-qty") ||
+        event.target.classList.contains("gr-quality")
+      ) {
+        updateTotals();
+      }
+    });
+
+    editorBody.addEventListener("change", function (event) {
+      if (event.target.classList.contains("gr-quality")) {
+        updateTotals();
+      }
+    });
+
+    saveEditorBtn.addEventListener("click", async function () {
+      var poNo = (grPoNo.value || "").trim();
+      if (!poNo) {
+        window.alert("Select an Approved PO.");
+        return;
+      }
+      var items = [];
+      Array.from(editorBody.querySelectorAll("tr[data-po-item-id]")).forEach(function (row) {
+        items.push({
+          po_item_id: parseInt(row.dataset.poItemId || "0", 10),
+          received_qty: toNumber((row.querySelector(".gr-received-qty") || {}).value),
+          damaged_qty: toNumber((row.querySelector(".gr-damaged-qty") || {}).value),
+          quality_status: (row.querySelector(".gr-quality") || {}).value || "Pass"
+        });
+      });
+      var payload = {
+        gr_no: (grNo.value || "").trim(),
+        po_no: poNo,
+        receipt_date: grReceiptDate.value || "",
+        invoice_no: (grInvoiceNo.value || "").trim(),
+        location: (grLocation.value || "").trim(),
+        status: "Open",
+        items: items
+      };
+      try {
+        var response = await postJson(apiUrls.save, payload);
+        addListRow(payload, response);
+        showEditor(false);
+      } catch (error) {
+        window.alert(error.message || "Unable to save goods receipt.");
+      }
+    });
+
+    if (searchBtn) {
+      searchBtn.addEventListener("click", filterRows);
+    }
+  })();
+</script>
+{% endblock %}

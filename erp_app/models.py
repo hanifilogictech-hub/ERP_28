@@ -1,0 +1,467 @@
+from django.db import models
+
+# Create your models here.
+from django.db import models
+
+
+class PurchaseOrder(models.Model):
+    order_no = models.CharField(max_length=64, unique=True)
+    order_date = models.DateField()
+    invoice_no = models.CharField(max_length=64)
+    supplier = models.CharField(max_length=128)
+    amount = models.FloatField()
+    paid_amount = models.FloatField(default=0)
+    supplier_code = models.CharField(max_length=32, default="", blank=True)
+    warehouse = models.CharField(max_length=128, default="", blank=True)
+    payment_terms = models.CharField(max_length=64, default="", blank=True)
+    currency = models.CharField(max_length=16, default="", blank=True)
+    status = models.CharField(max_length=32, default="Draft", blank=True)
+
+    class Meta:
+        db_table = "purchase_orders"
+
+
+class SalesOrder(models.Model):
+    order_no = models.CharField(max_length=64)
+    order_date = models.DateField()
+    invoice_no = models.CharField(max_length=64)
+    customer = models.CharField(max_length=128)
+    amount = models.FloatField()
+    paid_amount = models.FloatField(default=0)
+    salesman = models.CharField(max_length=64, default="Salesman 1")
+
+    class Meta:
+        db_table = "sales_orders"
+
+
+class PurchaseInvoice(models.Model):
+    invoice_no = models.CharField(max_length=64)
+    invoice_date = models.DateField()
+    supplier = models.CharField(max_length=128)
+    total_amount = models.FloatField()
+    paid_amount = models.FloatField(default=0)
+
+    class Meta:
+        db_table = "purchase_invoices"
+
+
+class SalesInvoice(models.Model):
+    invoice_no = models.CharField(max_length=64)
+    invoice_date = models.DateField()
+    customer = models.CharField(max_length=128)
+    total_amount = models.FloatField()
+    paid_amount = models.FloatField(default=0)
+
+    class Meta:
+        db_table = "sales_invoices"
+
+
+class Product(models.Model):
+    product_name = models.CharField(max_length=128)
+    department = models.CharField(max_length=64)
+    category = models.CharField(max_length=64)
+    cost_price = models.FloatField()
+    sell_price = models.FloatField()
+    stock_qty = models.IntegerField()
+    reorder_qty = models.IntegerField(default=10)
+
+    class Meta:
+        db_table = "products"
+
+
+class SalesOrderItem(models.Model):
+    sales_order = models.ForeignKey(
+        SalesOrder,
+        on_delete=models.CASCADE,
+        db_column="sales_order_id",
+        related_name="items",
+    )
+    product = models.ForeignKey(
+        Product, on_delete=models.CASCADE, db_column="product_id", related_name="order_items"
+    )
+    qty = models.IntegerField()
+    amount = models.FloatField()
+
+    class Meta:
+        db_table = "sales_order_items"
+
+
+class SupplierMaster(models.Model):
+    code = models.CharField(max_length=32, unique=True)
+    name = models.CharField(max_length=128)
+    contact = models.CharField(max_length=128, default="", blank=True)
+    address = models.CharField(max_length=255, default="", blank=True)
+    country = models.CharField(max_length=64, default="", blank=True)
+    currency = models.CharField(max_length=16, default="INR", blank=True)
+    payment_terms = models.CharField(max_length=64, default="Net 30", blank=True)
+
+    class Meta:
+        db_table = "supplier_master"
+
+
+class WarehouseMaster(models.Model):
+    name = models.CharField(max_length=128, unique=True)
+
+    class Meta:
+        db_table = "warehouse_master"
+
+
+class PurchaseProduct(models.Model):
+    code = models.CharField(max_length=32, unique=True)
+    name = models.CharField(max_length=128)
+    description = models.CharField(max_length=255, default="", blank=True)
+    unit_price = models.FloatField(default=0)
+    tax_percent = models.FloatField(default=0)
+
+    class Meta:
+        db_table = "purchase_products"
+
+
+class PurchaseOrderItem(models.Model):
+    purchase_order = models.ForeignKey(
+        PurchaseOrder,
+        on_delete=models.CASCADE,
+        db_column="purchase_order_id",
+        related_name="po_items",
+    )
+    product_code = models.CharField(max_length=32, default="", blank=True)
+    product_name = models.CharField(max_length=128)
+    description = models.CharField(max_length=255, default="", blank=True)
+    qty = models.FloatField(default=0)
+    unit_price = models.FloatField(default=0)
+    discount_percent = models.FloatField(default=0)
+    tax_percent = models.FloatField(default=0)
+    line_total = models.FloatField(default=0)
+    net_total = models.FloatField(default=0)
+
+    class Meta:
+        db_table = "purchase_order_items"
+
+
+class Inventory(models.Model):
+    product_code = models.CharField(max_length=32)
+    product_name = models.CharField(max_length=128, default="", blank=True)
+    location = models.CharField(max_length=128, default="", blank=True)
+    stock_qty = models.FloatField(default=0)
+
+    class Meta:
+        db_table = "inventory"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["product_code", "location"], name="uniq_inventory_product_location"
+            )
+        ]
+
+
+class GoodsReceipt(models.Model):
+    gr_no = models.CharField(max_length=64, unique=True)
+    purchase_order = models.ForeignKey(
+        PurchaseOrder,
+        on_delete=models.PROTECT,
+        db_column="purchase_order_id",
+        related_name="goods_receipts",
+    )
+    receipt_date = models.DateField()
+    invoice_no = models.CharField(max_length=64, default="", blank=True)
+    supplier = models.CharField(max_length=128, default="", blank=True)
+    location = models.CharField(max_length=128, default="", blank=True)
+    status = models.CharField(max_length=32, default="Open")
+
+    class Meta:
+        db_table = "goods_receipts"
+
+
+class GoodsReceiptItem(models.Model):
+    goods_receipt = models.ForeignKey(
+        GoodsReceipt,
+        on_delete=models.CASCADE,
+        db_column="goods_receipt_id",
+        related_name="items",
+    )
+    po_item = models.ForeignKey(
+        PurchaseOrderItem,
+        on_delete=models.PROTECT,
+        db_column="po_item_id",
+        null=True,
+        blank=True,
+        related_name="receipt_items",
+    )
+    product_code = models.CharField(max_length=32, default="", blank=True)
+    product_name = models.CharField(max_length=128, default="", blank=True)
+    ordered_qty = models.FloatField(default=0)
+    received_qty = models.FloatField(default=0)
+    accepted_qty = models.FloatField(default=0)
+    damaged_qty = models.FloatField(default=0)
+    quality_status = models.CharField(max_length=16, default="Pass")
+    unit_price = models.FloatField(default=0)
+    tax_percent = models.FloatField(default=0)
+    line_total = models.FloatField(default=0)
+    net_total = models.FloatField(default=0)
+    is_over_delivery = models.BooleanField(default=False)
+
+    class Meta:
+        db_table = "goods_receipt_items"
+
+
+class GoodsReturn(models.Model):
+    return_no = models.CharField(max_length=64, unique=True)
+    original_gr = models.ForeignKey(
+        GoodsReceipt,
+        on_delete=models.PROTECT,
+        db_column="original_gr_id",
+        related_name="goods_returns",
+    )
+    supplier = models.CharField(max_length=128, default="", blank=True)
+    return_date = models.DateField()
+    invoice_no = models.CharField(max_length=64, default="", blank=True)
+    location = models.CharField(max_length=128, default="", blank=True)
+    status = models.CharField(max_length=64, default="Pending Vendor Confirmation")
+    total_amount = models.FloatField(default=0)
+
+    class Meta:
+        db_table = "goods_returns"
+
+
+class GoodsReturnItem(models.Model):
+    goods_return = models.ForeignKey(
+        GoodsReturn,
+        on_delete=models.CASCADE,
+        db_column="goods_return_id",
+        related_name="items",
+    )
+    source_gr_item = models.ForeignKey(
+        GoodsReceiptItem,
+        on_delete=models.PROTECT,
+        db_column="source_gr_item_id",
+        related_name="return_items",
+    )
+    product_code = models.CharField(max_length=32, default="", blank=True)
+    product_name = models.CharField(max_length=128, default="", blank=True)
+    quantity = models.FloatField(default=0)
+    reason = models.CharField(max_length=128, default="", blank=True)
+    condition = models.CharField(max_length=64, default="Damaged")
+    unit_price = models.FloatField(default=0)
+    tax_percent = models.FloatField(default=0)
+    line_total = models.FloatField(default=0)
+    net_total = models.FloatField(default=0)
+
+    class Meta:
+        db_table = "goods_return_items"
+
+
+class DebitNote(models.Model):
+    note_no = models.CharField(max_length=64, unique=True)
+    goods_return = models.OneToOneField(
+        GoodsReturn,
+        on_delete=models.CASCADE,
+        db_column="goods_return_id",
+        related_name="debit_note",
+    )
+    supplier = models.CharField(max_length=128, default="", blank=True)
+    note_date = models.DateField()
+    amount = models.FloatField(default=0)
+    status = models.CharField(max_length=32, default="Open")
+
+    class Meta:
+        db_table = "debit_notes"
+
+
+class SupplierLedgerEntry(models.Model):
+    supplier = models.CharField(max_length=128, default="", blank=True)
+    entry_date = models.DateField()
+    document_type = models.CharField(max_length=64, default="")
+    document_no = models.CharField(max_length=64, default="")
+    amount = models.FloatField(default=0)
+    dr_cr = models.CharField(max_length=8, default="CR")
+    remarks = models.CharField(max_length=255, default="", blank=True)
+
+    class Meta:
+        db_table = "supplier_ledger"
+
+
+class PurchaseInvoiceEntry(models.Model):
+    tran_no = models.CharField(max_length=64, unique=True)
+    po_no = models.CharField(max_length=64, default="", blank=True)
+    gr_no = models.CharField(max_length=64, default="", blank=True)
+    supplier_invoice_no = models.CharField(max_length=64, unique=True)
+    invoice_date = models.DateField()
+    supplier = models.CharField(max_length=128, default="", blank=True)
+    location = models.CharField(max_length=128, default="", blank=True)
+    status = models.CharField(max_length=32, default="Approved")
+    payment_status = models.CharField(max_length=32, default="Not Paid")
+    sub_total = models.FloatField(default=0)
+    tax_total = models.FloatField(default=0)
+    net_total = models.FloatField(default=0)
+    paid_amount = models.FloatField(default=0)
+    balance_amount = models.FloatField(default=0)
+
+    class Meta:
+        db_table = "purchase_invoice_entries"
+
+
+class PurchaseInvoiceEntryItem(models.Model):
+    invoice_entry = models.ForeignKey(
+        PurchaseInvoiceEntry,
+        on_delete=models.CASCADE,
+        db_column="invoice_entry_id",
+        related_name="items",
+    )
+    gr_item = models.ForeignKey(
+        GoodsReceiptItem,
+        on_delete=models.PROTECT,
+        db_column="gr_item_id",
+        related_name="invoice_items",
+    )
+    po_item = models.ForeignKey(
+        PurchaseOrderItem,
+        on_delete=models.PROTECT,
+        db_column="po_item_id",
+        related_name="invoice_items",
+        null=True,
+        blank=True,
+    )
+    product_code = models.CharField(max_length=32, default="", blank=True)
+    product_name = models.CharField(max_length=128, default="", blank=True)
+    billed_qty = models.FloatField(default=0)
+    unit_price = models.FloatField(default=0)
+    tax_percent = models.FloatField(default=0)
+    sub_total = models.FloatField(default=0)
+    net_total = models.FloatField(default=0)
+
+    class Meta:
+        db_table = "purchase_invoice_entry_items"
+
+
+class StockRequest(models.Model):
+    request_no = models.CharField(max_length=64, unique=True)
+    request_date = models.DateField()
+    from_location = models.CharField(max_length=128, default="", blank=True)
+    to_location = models.CharField(max_length=128, default="", blank=True)
+    status = models.CharField(max_length=32, default="Pending Approval")
+    remarks = models.CharField(max_length=255, default="", blank=True)
+    created_by = models.CharField(max_length=64, default="Admin", blank=True)
+    created_date = models.DateField()
+
+    class Meta:
+        db_table = "stock_requests"
+
+
+class StockRequestItem(models.Model):
+    stock_request = models.ForeignKey(
+        StockRequest,
+        on_delete=models.CASCADE,
+        db_column="stock_request_id",
+        related_name="items",
+    )
+    product_code = models.CharField(max_length=32, default="", blank=True)
+    product_name = models.CharField(max_length=128, default="", blank=True)
+    carton_qty = models.FloatField(default=0)
+    loose_qty = models.FloatField(default=0)
+    total_qty = models.FloatField(default=0)
+
+    class Meta:
+        db_table = "stock_request_items"
+
+
+class StockTransfer(models.Model):
+    transfer_no = models.CharField(max_length=64, unique=True)
+    transfer_date = models.DateField()
+    from_location = models.CharField(max_length=128, default="", blank=True)
+    to_location = models.CharField(max_length=128, default="", blank=True)
+    status = models.CharField(max_length=32, default="Draft")
+    remarks = models.CharField(max_length=255, default="", blank=True)
+    has_discrepancy = models.BooleanField(default=False)
+    discrepancy_remarks = models.CharField(max_length=255, default="", blank=True)
+
+    class Meta:
+        db_table = "stock_transfers"
+
+
+class StockTransferItem(models.Model):
+    stock_transfer = models.ForeignKey(
+        StockTransfer,
+        on_delete=models.CASCADE,
+        db_column="stock_transfer_id",
+        related_name="items",
+    )
+    product_code = models.CharField(max_length=32, default="", blank=True)
+    product_name = models.CharField(max_length=128, default="", blank=True)
+    qty = models.FloatField(default=0)
+
+    class Meta:
+        db_table = "stock_transfer_items"
+
+
+class StockAdjustment(models.Model):
+    adjustment_no = models.CharField(max_length=64, unique=True)
+    adjustment_date = models.DateField()
+    location = models.CharField(max_length=128, default="", blank=True)
+    remarks = models.CharField(max_length=255, default="", blank=True)
+    created_by = models.CharField(max_length=64, default="Admin", blank=True)
+    created_date = models.DateField()
+
+    class Meta:
+        db_table = "stock_adjustments"
+
+
+class StockAdjustmentItem(models.Model):
+    stock_adjustment = models.ForeignKey(
+        StockAdjustment,
+        on_delete=models.CASCADE,
+        db_column="stock_adjustment_id",
+        related_name="items",
+    )
+    product_code = models.CharField(max_length=32, default="", blank=True)
+    product_name = models.CharField(max_length=128, default="", blank=True)
+    old_qty = models.FloatField(default=0)
+    adjustment_sign = models.CharField(max_length=1, default="-")
+    adjustment_qty = models.FloatField(default=0)
+    new_qty = models.FloatField(default=0)
+    reason = models.CharField(max_length=64, default="Manual Correction")
+
+    class Meta:
+        db_table = "stock_adjustment_items"
+
+
+class StockTake(models.Model):
+    stock_take_no = models.CharField(max_length=64, unique=True)
+    stock_take_date = models.DateField()
+    location = models.CharField(max_length=128, default="", blank=True)
+    status = models.CharField(max_length=32, default="Pending")
+    remarks = models.CharField(max_length=255, default="", blank=True)
+    user_name = models.CharField(max_length=64, default="Admin", blank=True)
+    last_stock_take_date = models.DateField(null=True, blank=True)
+
+    class Meta:
+        db_table = "stock_takes"
+
+
+class StockTakeItem(models.Model):
+    stock_take = models.ForeignKey(
+        StockTake,
+        on_delete=models.CASCADE,
+        db_column="stock_take_id",
+        related_name="items",
+    )
+    product_code = models.CharField(max_length=32, default="", blank=True)
+    product_name = models.CharField(max_length=128, default="", blank=True)
+    system_qty = models.FloatField(default=0)
+    physical_qty = models.FloatField(default=0)
+    variance = models.FloatField(default=0)
+
+    class Meta:
+        db_table = "stock_take_items"
+
+
+class PurchasePayment(models.Model):
+    payment_no = models.CharField(max_length=64, unique=True)
+    payment_date = models.DateField()
+    tran_no = models.CharField(max_length=64, default="", blank=True)
+    supplier_invoice_no = models.CharField(max_length=64, default="", blank=True)
+    supplier = models.CharField(max_length=128, default="", blank=True)
+    amount = models.FloatField(default=0)
+    mode = models.CharField(max_length=32, default="Cash")
+    remarks = models.CharField(max_length=255, default="", blank=True)
+
+    class Meta:
+        db_table = "purchase_payments"

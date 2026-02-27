@@ -1,0 +1,282 @@
+{% extends "base_layout.html" %}
+
+{% block page_heading %}
+<div class="po-heading-bar">
+  <h1>Product Transfer</h1>
+</div>
+{% endblock %}
+
+{% block content %}
+<section class="po-editor-panel stock-request-form-panel stock-transfer-form-panel">
+  <div class="po-editor-head stock-form-head transfer-form-head">
+    <div class="po-editor-field">
+      <label for="st_no">Transfer No</label>
+      <input id="st_no" type="text" value="{{ st_next_no|default:'TR-00067' }}" readonly>
+    </div>
+    <div class="po-editor-field">
+      <label for="st_date">Date</label>
+      <input id="st_date" type="date" value="{{ st_today }}">
+    </div>
+    <div class="po-editor-field">
+      <label for="st_from_location">From Location</label>
+      <select id="st_from_location">
+        {% for location in st_locations %}
+        <option value="{{ location }}" {% if forloop.first %}selected{% endif %}>{{ location }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="po-editor-field">
+      <label for="st_to_location">To Location</label>
+      <select id="st_to_location">
+        {% for location in st_locations %}
+        <option value="{{ location }}" {% if not forloop.first %}{% if forloop.counter == 2 %}selected{% endif %}{% endif %}>{{ location }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="po-editor-field transfer-remarks">
+      <label for="st_remarks">Remarks</label>
+      <input id="st_remarks" type="text" placeholder="Remarks">
+    </div>
+  </div>
+
+  <div class="stock-add-row">
+    <button type="button" class="po-editor-save stock-add-btn" id="st-add-product-btn">+ Add Product</button>
+  </div>
+
+  <table class="po-editor-table stock-product-table transfer-product-table">
+    <thead>
+      <tr>
+        <th>SlNo</th>
+        <th>Product</th>
+        <th>Avail Stock</th>
+        <th>Qty</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody id="st-product-tbody">
+      <tr>
+        <td>1</td>
+        <td>
+          <select class="st-product-select">
+            {% for p in st_products %}
+            <option value="{{ p.code }}" {% if forloop.first %}selected{% endif %}>{{ p.name }}</option>
+            {% empty %}
+            <option value="">No products found</option>
+            {% endfor %}
+          </select>
+        </td>
+        <td class="st-stock">0</td>
+        <td><input type="number" class="st-qty" min="0" step="1" value="0"></td>
+        <td><button type="button" class="gr-icon-btn gr-delete-btn" data-transfer-action="delete" aria-label="Delete">&#128465;</button></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="po-editor-buttons">
+    <a href="{% url 'stock_transfer' %}" class="po-editor-cancel stock-link-btn">Back</a>
+    <button type="button" class="po-editor-cancel" id="st-save-btn">Save</button>
+    <button type="button" class="po-editor-save" id="st-confirm-btn">Confirm</button>
+    <button type="button" class="po-editor-cancel" id="st-cancel-btn">Cancel</button>
+  </div>
+</section>
+
+{{ st_products|json_script:"st-products-data" }}
+{{ st_stock_by_location|json_script:"st-stock-map-data" }}
+<script>
+  (function () {
+    var addBtn = document.getElementById("st-add-product-btn");
+    var tbody = document.getElementById("st-product-tbody");
+    var fromLocationEl = document.getElementById("st_from_location");
+    if (!addBtn || !tbody) return;
+
+    var products = [];
+    var stockByLocation = {};
+    try {
+      products = JSON.parse((document.getElementById("st-products-data") || {}).textContent || "[]");
+    } catch (_error) {
+      products = [];
+    }
+    try {
+      stockByLocation = JSON.parse((document.getElementById("st-stock-map-data") || {}).textContent || "{}");
+    } catch (_error) {
+      stockByLocation = {};
+    }
+
+    function toNumber(value) {
+      var n = parseFloat(value);
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    function renumberRows() {
+      Array.from(tbody.querySelectorAll("tr")).forEach(function (row, index) {
+        if (row.cells[0]) row.cells[0].textContent = String(index + 1);
+      });
+    }
+
+    function updateRowStock(row) {
+      var productSelect = row.querySelector(".st-product-select");
+      var stockCell = row.querySelector(".st-stock");
+      var fromLocation = (fromLocationEl || {}).value || "";
+      var productCode = (productSelect || {}).value || "";
+      var key = fromLocation + "|" + productCode;
+      var stock = Number(stockByLocation[key] || 0);
+      if (stockCell) stockCell.textContent = String(stock);
+    }
+
+    function buildRow(index) {
+      var optionHtml = products.map(function (p) {
+        var code = String((p || {}).code || "");
+        var name = String((p || {}).name || "");
+        return "<option value='" + code.replace(/'/g, "&#39;") + "'>" + name.replace(/</g, "&lt;").replace(/>/g, "&gt;") + "</option>";
+      }).join("");
+      if (!optionHtml) {
+        optionHtml = "<option value=''>No products found</option>";
+      }
+      var tr = document.createElement("tr");
+      tr.innerHTML =
+        "<td></td>" +
+        "<td><select class='st-product-select'>" + optionHtml + "</select></td>" +
+        "<td class='st-stock'>0</td>" +
+        "<td><input type='number' class='st-qty' min='0' step='1' value='0'></td>" +
+        "<td><button type='button' class='gr-icon-btn gr-delete-btn' data-transfer-action='delete' aria-label='Delete'>&#128465;</button></td>";
+      return tr;
+    }
+
+    addBtn.addEventListener("click", function () {
+      var row = buildRow(tbody.rows.length);
+      tbody.appendChild(row);
+      renumberRows();
+      updateRowStock(row);
+    });
+
+    tbody.addEventListener("click", function (event) {
+      var btn = event.target.closest("[data-transfer-action='delete']");
+      if (!btn) return;
+      var row = btn.closest("tr");
+      if (!row) return;
+      if (tbody.rows.length <= 1) {
+        row.querySelector(".st-qty").value = "0";
+        return;
+      }
+      row.remove();
+      renumberRows();
+    });
+
+    tbody.addEventListener("change", function (event) {
+      if (event.target.classList.contains("st-product-select")) {
+        var row = event.target.closest("tr");
+        if (row) updateRowStock(row);
+      }
+    });
+
+    if (fromLocationEl) {
+      fromLocationEl.addEventListener("change", function () {
+        Array.from(tbody.querySelectorAll("tr")).forEach(function (row) {
+          updateRowStock(row);
+        });
+      });
+    }
+
+    function collectItems() {
+      return Array.from(tbody.querySelectorAll("tr")).map(function (row) {
+        var productSelect = row.querySelector(".st-product-select");
+        var productCode = (productSelect || {}).value || "";
+        var productName = "";
+        if (productSelect && productSelect.selectedIndex >= 0) {
+          productName = productSelect.options[productSelect.selectedIndex].text || "";
+        }
+        return {
+          product_code: productCode,
+          product_name: String(productName).trim(),
+          qty: toNumber((row.querySelector(".st-qty") || {}).value)
+        };
+      }).filter(function (item) {
+        return item.product_code && item.qty > 0;
+      });
+    }
+
+    function postJson(url, payload) {
+      return fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload || {})
+      }).then(function (response) {
+        return response.json().catch(function () { return {}; }).then(function (data) {
+          if (!response.ok || data.ok === false) {
+            throw new Error(data.error || "Request failed.");
+          }
+          return data;
+        });
+      });
+    }
+
+    function saveTransfer() {
+      var fromLocation = (document.getElementById("st_from_location") || {}).value || "";
+      var toLocation = (document.getElementById("st_to_location") || {}).value || "";
+      if (!fromLocation || !toLocation) {
+        window.alert("Select both From and To locations.");
+        return Promise.reject(new Error("Location missing"));
+      }
+      if (fromLocation === toLocation) {
+        window.alert("From and To locations must be different.");
+        return Promise.reject(new Error("Location conflict"));
+      }
+      var payload = {
+        transfer_no: (document.getElementById("st_no") || {}).value || "",
+        transfer_date: (document.getElementById("st_date") || {}).value || "",
+        from_location: fromLocation,
+        to_location: toLocation,
+        remarks: (document.getElementById("st_remarks") || {}).value || "",
+        items: collectItems()
+      };
+      return postJson("{% url 'st_save_api' %}", payload).then(function (data) {
+        if (data.transfer_no) {
+          document.getElementById("st_no").value = data.transfer_no;
+        }
+        return data;
+      });
+    }
+
+    var saveBtn = document.getElementById("st-save-btn");
+    var confirmBtn = document.getElementById("st-confirm-btn");
+    var cancelBtn = document.getElementById("st-cancel-btn");
+
+    if (saveBtn) {
+      saveBtn.addEventListener("click", function () {
+        saveTransfer().then(function (data) {
+          window.alert("Saved: " + data.transfer_no + " (" + data.status + ")");
+        }).catch(function (error) {
+          if (error && error.message && error.message !== "Location missing" && error.message !== "Location conflict") {
+            window.alert(error.message);
+          }
+        });
+      });
+    }
+
+    if (confirmBtn) {
+      confirmBtn.addEventListener("click", function () {
+        saveTransfer().then(function (saveData) {
+          return postJson("{% url 'st_confirm_api' %}", { transfer_no: saveData.transfer_no });
+        }).then(function (confirmData) {
+          window.alert("Confirmed: " + confirmData.transfer_no + " (" + confirmData.status + ")");
+          window.location.href = "{% url 'stock_transfer' %}";
+        }).catch(function (error) {
+          if (error && error.message && error.message !== "Location missing" && error.message !== "Location conflict") {
+            window.alert(error.message);
+          }
+        });
+      });
+    }
+
+    if (cancelBtn) {
+      cancelBtn.addEventListener("click", function () {
+        window.location.href = "{% url 'stock_transfer' %}";
+      });
+    }
+
+    Array.from(tbody.querySelectorAll("tr")).forEach(function (row) {
+      updateRowStock(row);
+    });
+  })();
+</script>
+{% endblock %}

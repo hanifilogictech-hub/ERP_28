@@ -1,0 +1,97 @@
+{% extends "base_layout.html" %}
+
+{% block page_heading %}
+<div class="po-heading-bar">
+  <h1>Stock Request Management</h1>
+  <a class="po-new-btn stock-new-btn" href="{% url 'stock_request_new' %}">New Transaction</a>
+</div>
+{% endblock %}
+
+{% block content %}
+<section class="purchase-window purchase-order-window goods-receipt-window stock-request-window" id="sr-list-view">
+  <div class="doc-body">
+    <div class="gr-row stock-filter-row">
+      <div class="gr-field-group">
+        <label class="po-label" for="sr_filter_no">Stock Req No</label>
+        <input id="sr_filter_no" class="po-no-input" type="text" placeholder="Stock Req No">
+      </div>
+      <div class="gr-field-group">
+        <label class="po-label" for="sr_filter_from_date">From Date</label>
+        <input id="sr_filter_from_date" class="po-field-date" type="date">
+      </div>
+      <div class="gr-field-group">
+        <label class="po-label" for="sr_filter_to_date">To Date</label>
+        <input id="sr_filter_to_date" class="po-field-date" type="date">
+      </div>
+      <div class="gr-field-group">
+        <label class="po-label" for="sr_filter_status">Status</label>
+        <select id="sr_filter_status" class="po-field-select">
+          <option value="">All</option>
+          <option>Draft</option>
+          <option>Submitted</option>
+          <option>Approved</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="gr-row stock-filter-row">
+      <div class="gr-field-group">
+        <label class="po-label" for="sr_filter_from_location">From Location</label>
+        <select id="sr_filter_from_location" class="po-field-select">
+          <option value="">Select From Location</option>
+          {% for location in sr_locations %}
+          <option value="{{ location }}">{{ location }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="gr-field-group">
+        <label class="po-label" for="sr_filter_to_location">To Location</label>
+        <select id="sr_filter_to_location" class="po-field-select">
+          <option value="">Select To Location</option>
+          {% for location in sr_locations %}
+          <option value="{{ location }}">{{ location }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="gr-actions stock-actions">
+        <button type="button" class="po-search-btn" title="Search" aria-label="Search">&#128269;</button>
+        <button type="button" class="gr-icon-btn" title="Print" aria-label="Print">&#128424;</button>
+        <button type="button" class="gr-icon-btn gr-delete-btn" title="Delete" aria-label="Delete">&#128465;</button>
+      </div>
+    </div>
+
+    <table class="doc-table po-items-table gr-items-table stock-grid">
+      <thead>
+        <tr>
+          <th><input type="checkbox" aria-label="Select all"></th>
+          <th>Stock Req No</th>
+          <th>From Location</th>
+          <th>To Location</th>
+          <th>Status</th>
+          <th>StockReq Date</th>
+          <th>CreateDate</th>
+          <th>Remarks</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in sr_rows %}
+        <tr>
+          <td><input type="checkbox" aria-label="Select row"></td>
+          <td>{{ row.stock_req_no }}</td>
+          <td>{{ row.from_location }}</td>
+          <td>{{ row.to_location }}</td>
+          <td><span class="po-status-pill">{{ row.status }}</span></td>
+          <td>{{ row.stock_req_date }}</td>
+          <td>{{ row.create_date }}</td>
+          <td>{{ row.remarks }}</td>
+        </tr>
+        {% empty %}
+        <tr class="gr-empty-row">
+          <td colspan="8">No data available in table</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

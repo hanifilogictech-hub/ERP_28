@@ -1,0 +1,507 @@
+{% extends "base_layout.html" %}
+
+{% block page_heading %}
+<div class="po-heading-bar">
+  <h1>Purchase Invoice Management</h1>
+  <button type="button" class="po-new-btn" id="pi-open-editor-btn">New Transaction</button>
+</div>
+{% endblock %}
+
+{% block content %}
+{{ pi_receipts|json_script:"pi-receipts-data" }}
+
+<section class="purchase-window purchase-order-window goods-receipt-window purchase-invoice-window" id="pi-list-view">
+  <div class="doc-body">
+    <div class="gr-row pi-row-top">
+      <div class="gr-field-group">
+        <label class="po-label" for="pi_filter_tran_no">Tran No</label>
+        <input id="pi_filter_tran_no" class="po-no-input" type="text" placeholder="Tran No">
+      </div>
+      <div class="gr-field-group">
+        <label class="po-label" for="pi_filter_from_date">From Date</label>
+        <input id="pi_filter_from_date" class="po-field-date" type="date">
+      </div>
+      <div class="gr-field-group">
+        <label class="po-label" for="pi_filter_to_date">To Date</label>
+        <input id="pi_filter_to_date" class="po-field-date" type="date">
+      </div>
+      <div class="gr-field-group">
+        <label class="po-label" for="pi_filter_status">Status</label>
+        <select id="pi_filter_status" class="po-field-select">
+          <option value="">Open</option>
+          <option>Open</option>
+          <option>Closed</option>
+          <option>Approved</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="gr-row pi-row-mid">
+      <div class="gr-field-group">
+        <label class="po-label" for="pi_filter_location">Select To Location</label>
+        <select id="pi_filter_location" class="po-field-select">
+          <option value="">Select To Location</option>
+          {% for warehouse in pi_warehouses %}
+          <option value="{{ warehouse }}">{{ warehouse }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="gr-field-group">
+        <label class="po-label" for="pi_filter_supplier">Select All Suppliers</label>
+        <select id="pi_filter_supplier" class="po-field-select">
+          <option value="">Select All Suppliers</option>
+          {% for supplier in pi_suppliers %}
+          <option value="{{ supplier.name }}">{{ supplier.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="gr-field-group">
+        <label class="po-label" for="pi_filter_invoice_no">Invoice No</label>
+        <input id="pi_filter_invoice_no" class="po-no-input" type="text" placeholder="Invoice No">
+      </div>
+      <div class="gr-field-group">
+        <label class="po-label" for="pi_filter_payment_status">Payment Status</label>
+        <select id="pi_filter_payment_status" class="po-field-select">
+          <option value="">Not Paid</option>
+          <option>Not Paid</option>
+          <option>Partial</option>
+          <option>Paid</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="pi-toolbar">
+      <button type="button" id="pi-search-btn" class="pi-search-btn" title="Search" aria-label="Search">
+        <span class="pi-search-icon">&#128269;</span>
+        <span>Search</span>
+      </button>
+      <button type="button" class="gr-icon-btn" title="Print" aria-label="Print">&#128424;</button>
+      <button type="button" class="gr-icon-btn gr-delete-btn" title="Delete" aria-label="Delete">&#128465;</button>
+    </div>
+
+    <table class="doc-table po-items-table gr-items-table pi-items-table">
+      <colgroup>
+        <col style="width:4%">
+        <col style="width:10%">
+        <col style="width:10%">
+        <col style="width:14%">
+        <col style="width:12%">
+        <col style="width:9%">
+        <col style="width:7%">
+        <col style="width:9%">
+        <col style="width:9%">
+        <col style="width:10%">
+      </colgroup>
+      <thead>
+        <tr>
+          <th><input type="checkbox" aria-label="Select all"></th>
+          <th>Tran No</th>
+          <th>Tran Date</th>
+          <th>Supplier</th>
+          <th>InvoiceNo</th>
+          <th>SubTotal</th>
+          <th>Tax</th>
+          <th>NetTotal</th>
+          <th>PaidAmount</th>
+          <th>BalanceAmount</th>
+        </tr>
+      </thead>
+      <tbody id="pi-list-tbody">
+        {% if pi_rows %}
+        {% for row in pi_rows %}
+        <tr data-location="{{ row.location }}" data-date="{{ row.tran_date }}" data-status="{{ row.status }}" data-payment-status="{{ row.payment_status }}">
+          <td><input type="checkbox" aria-label="Select row"></td>
+          <td>{{ row.tran_no }}</td>
+          <td>{{ row.tran_date }}</td>
+          <td>{{ row.supplier }}</td>
+          <td>{{ row.invoice_no }}</td>
+          <td>{{ row.sub_total|floatformat:2 }}</td>
+          <td>{{ row.tax|floatformat:2 }}</td>
+          <td>{{ row.net_total|floatformat:2 }}</td>
+          <td>{{ row.paid_amount|floatformat:2 }}</td>
+          <td class="pi-balance">{{ row.balance_amount|floatformat:2 }}</td>
+        </tr>
+        {% endfor %}
+        {% else %}
+        <tr class="gr-empty-row">
+          <td colspan="10">No data available in table</td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="po-editor-panel gr-editor-panel pi-editor-panel" id="pi-editor-view" hidden>
+  <h2>Add/Edit Purchase Invoice</h2>
+  <div class="po-editor-head gr-editor-head">
+    <div class="po-editor-field">
+      <label for="pi_tran_no">Tran No</label>
+      <input id="pi_tran_no" type="text" readonly>
+    </div>
+    <div class="po-editor-field">
+      <label for="pi_invoice_date">Invoice Date</label>
+      <input id="pi_invoice_date" type="date" value="{{ pi_today }}">
+    </div>
+    <div class="po-editor-field">
+      <label for="pi_gr_no">GR Number</label>
+      <select id="pi_gr_no">
+        <option value="">Select Goods Receipt</option>
+        {% for gr in pi_receipts %}
+        <option value="{{ gr.gr_no }}">{{ gr.gr_no }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="po-editor-field">
+      <label for="pi_po_no">PO Number</label>
+      <input id="pi_po_no" type="text" readonly>
+    </div>
+    <div class="po-editor-field">
+      <label for="pi_supplier_name">Supplier</label>
+      <input id="pi_supplier_name" type="text" readonly>
+    </div>
+    <div class="po-editor-field">
+      <label for="pi_location">Location</label>
+      <select id="pi_location">
+        <option value="">Select Location</option>
+        {% for warehouse in pi_warehouses %}
+        <option value="{{ warehouse }}">{{ warehouse }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="po-editor-field">
+      <label for="pi_supplier_invoice_no">Supplier Invoice No</label>
+      <input id="pi_supplier_invoice_no" type="text" placeholder="Supplier Invoice No">
+    </div>
+    <div class="po-editor-field">
+      <label for="pi_invoice_amount">Entered Invoice Amount</label>
+      <input id="pi_invoice_amount" type="number" min="0" step="0.01" placeholder="0.00">
+    </div>
+  </div>
+
+  <table class="po-editor-table gr-editor-table pi-editor-table">
+    <thead>
+      <tr>
+        <th>S No</th>
+        <th>Product</th>
+        <th>Received Qty</th>
+        <th>Already Billed</th>
+        <th>Billable Qty</th>
+        <th>Billed Qty</th>
+        <th>Unit Price</th>
+        <th>Tax %</th>
+        <th>Line Total</th>
+      </tr>
+    </thead>
+    <tbody id="pi-editor-tbody">
+      <tr>
+        <td colspan="9">Select a Goods Receipt to load items.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="po-editor-footer">
+    <div>SubTotal: <strong id="pi_subtotal">0.00</strong></div>
+    <div>Tax: <strong id="pi_tax_total">0.00</strong></div>
+    <div class="po-editor-net">NetTotal: <strong id="pi_net_total">0.00</strong></div>
+    <div>PaidAmount: <strong id="pi_paid_amount">0.00</strong></div>
+    <div class="po-editor-net">BalanceAmount: <strong id="pi_balance_amount">0.00</strong></div>
+  </div>
+
+  <div class="po-editor-buttons">
+    <button type="button" id="pi-cancel-editor-btn" class="po-editor-cancel">Cancel</button>
+    <button type="button" id="pi-save-editor-btn" class="po-editor-save">Save Invoice</button>
+  </div>
+</section>
+
+<script>
+  (function () {
+    var listView = document.getElementById("pi-list-view");
+    var editorView = document.getElementById("pi-editor-view");
+    var headingBar = document.querySelector(".po-heading-bar");
+    var openEditorBtn = document.getElementById("pi-open-editor-btn");
+    var cancelEditorBtn = document.getElementById("pi-cancel-editor-btn");
+    var saveEditorBtn = document.getElementById("pi-save-editor-btn");
+    var listBody = document.getElementById("pi-list-tbody");
+    var editorBody = document.getElementById("pi-editor-tbody");
+
+    var tranNoInput = document.getElementById("pi_tran_no");
+    var invoiceDateInput = document.getElementById("pi_invoice_date");
+    var grNoSelect = document.getElementById("pi_gr_no");
+    var poNoInput = document.getElementById("pi_po_no");
+    var supplierInput = document.getElementById("pi_supplier_name");
+    var locationSelect = document.getElementById("pi_location");
+    var supplierInvoiceInput = document.getElementById("pi_supplier_invoice_no");
+    var enteredAmountInput = document.getElementById("pi_invoice_amount");
+
+    var subtotalEl = document.getElementById("pi_subtotal");
+    var taxEl = document.getElementById("pi_tax_total");
+    var netEl = document.getElementById("pi_net_total");
+    var paidEl = document.getElementById("pi_paid_amount");
+    var balanceEl = document.getElementById("pi_balance_amount");
+
+    var filterTranNo = document.getElementById("pi_filter_tran_no");
+    var filterFromDate = document.getElementById("pi_filter_from_date");
+    var filterToDate = document.getElementById("pi_filter_to_date");
+    var filterStatus = document.getElementById("pi_filter_status");
+    var filterLocation = document.getElementById("pi_filter_location");
+    var filterSupplier = document.getElementById("pi_filter_supplier");
+    var filterInvoice = document.getElementById("pi_filter_invoice_no");
+    var filterPaymentStatus = document.getElementById("pi_filter_payment_status");
+    var searchBtn = document.getElementById("pi-search-btn");
+
+    if (!listView || !editorView || !listBody || !editorBody) return;
+
+    var apiUrls = {
+      grDetails: "{% url 'pi_gr_details_api' %}",
+      save: "{% url 'pi_save_api' %}"
+    };
+
+    function toNumber(value) {
+      var n = parseFloat(value);
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    function showEditor(show) {
+      listView.hidden = !!show;
+      editorView.hidden = !show;
+      if (headingBar) headingBar.hidden = !!show;
+    }
+
+    function nextTranNo() {
+      var max = 100;
+      Array.from(listBody.querySelectorAll("tr")).forEach(function (row) {
+        var cell = row.cells[1];
+        if (!cell) return;
+        var text = (cell.textContent || "").trim();
+        var match = text.match(/^PINV-(\d+)$/i);
+        if (match) max = Math.max(max, parseInt(match[1], 10));
+      });
+      return "PINV-" + (max + 1);
+    }
+
+    async function getJson(url) {
+      var response = await fetch(url, { method: "GET" });
+      var data = {};
+      try { data = await response.json(); } catch (_e) { data = {}; }
+      if (!response.ok || data.ok === false) throw new Error(data.error || "Request failed.");
+      return data;
+    }
+
+    async function postJson(url, payload) {
+      var response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload || {})
+      });
+      var data = {};
+      try { data = await response.json(); } catch (_e) { data = {}; }
+      if (!response.ok || data.ok === false) throw new Error(data.error || "Request failed.");
+      return data;
+    }
+
+    function clearRows(message) {
+      editorBody.innerHTML = "<tr><td colspan='9'>" + (message || "No items") + "</td></tr>";
+      subtotalEl.textContent = "0.00";
+      taxEl.textContent = "0.00";
+      netEl.textContent = "0.00";
+      paidEl.textContent = "0.00";
+      balanceEl.textContent = "0.00";
+    }
+
+    function updateTotals() {
+      var subtotal = 0;
+      var tax = 0;
+      Array.from(editorBody.querySelectorAll("tr[data-gr-item-id]")).forEach(function (row) {
+        var qtyInput = row.querySelector(".pi-billed-qty");
+        var maxQty = toNumber(row.dataset.billableQty || 0);
+        var qty = Math.max(toNumber(qtyInput ? qtyInput.value : 0), 0);
+        if (qty > maxQty) qty = maxQty;
+        if (qtyInput) qtyInput.value = qty.toFixed(2);
+        var price = toNumber(row.dataset.unitPrice || 0);
+        var taxPct = toNumber(row.dataset.taxPercent || 0);
+        var lineSub = qty * price;
+        var lineNet = lineSub + (lineSub * (taxPct / 100));
+        subtotal += lineSub;
+        tax += Math.max(lineNet - lineSub, 0);
+        var lineEl = row.querySelector(".pi-line-total");
+        if (lineEl) lineEl.value = lineNet.toFixed(2);
+      });
+      var net = subtotal + tax;
+      subtotalEl.textContent = subtotal.toFixed(2);
+      taxEl.textContent = tax.toFixed(2);
+      netEl.textContent = net.toFixed(2);
+      paidEl.textContent = "0.00";
+      balanceEl.textContent = net.toFixed(2);
+      return { sub_total: subtotal, tax_total: tax, net_total: net };
+    }
+
+    function renderItems(items) {
+      if (!items || !items.length) {
+        clearRows("No GR items found.");
+        return;
+      }
+      editorBody.innerHTML = "";
+      items.forEach(function (item, idx) {
+        var row = document.createElement("tr");
+        row.dataset.grItemId = String(item.gr_item_id || "");
+        row.dataset.billableQty = String(item.billable_qty || 0);
+        row.dataset.unitPrice = String(item.unit_price_po || 0);
+        row.dataset.taxPercent = String(item.tax_percent || 0);
+        row.innerHTML =
+          "<td>" + (idx + 1) + "</td>" +
+          "<td>" + (item.product_name || "") + "</td>" +
+          "<td>" + toNumber(item.received_qty).toFixed(2) + "</td>" +
+          "<td>" + toNumber(item.already_billed_qty).toFixed(2) + "</td>" +
+          "<td>" + toNumber(item.billable_qty).toFixed(2) + "</td>" +
+          "<td><input class='pi-billed-qty' type='number' min='0' max='" + toNumber(item.billable_qty).toFixed(2) + "' step='0.01' value='" + toNumber(item.billable_qty).toFixed(2) + "'></td>" +
+          "<td><input class='pi-unit-price' type='number' readonly value='" + toNumber(item.unit_price_po).toFixed(2) + "'></td>" +
+          "<td><input class='pi-tax' type='number' readonly value='" + toNumber(item.tax_percent).toFixed(2) + "'></td>" +
+          "<td><input class='pi-line-total' type='number' readonly value='0.00'></td>";
+        editorBody.appendChild(row);
+      });
+      updateTotals();
+    }
+
+    async function loadGrDetails() {
+      var grNo = (grNoSelect.value || "").trim();
+      if (!grNo) {
+        clearRows("Select a Goods Receipt to load items.");
+        return;
+      }
+      try {
+        var data = await getJson(apiUrls.grDetails + "?gr_no=" + encodeURIComponent(grNo));
+        var gr = data.gr || {};
+        poNoInput.value = gr.po_no || "";
+        supplierInput.value = gr.supplier || "";
+        if (!locationSelect.value && gr.location) locationSelect.value = gr.location;
+        renderItems(gr.items || []);
+      } catch (error) {
+        clearRows(error.message || "Unable to fetch GR details.");
+      }
+    }
+
+    function collectPayload() {
+      var rows = [];
+      Array.from(editorBody.querySelectorAll("tr[data-gr-item-id]")).forEach(function (row) {
+        rows.push({
+          gr_item_id: parseInt(row.dataset.grItemId || "0", 10),
+          billed_qty: toNumber((row.querySelector(".pi-billed-qty") || {}).value),
+          unit_price: toNumber((row.querySelector(".pi-unit-price") || {}).value),
+          tax_percent: toNumber((row.querySelector(".pi-tax") || {}).value)
+        });
+      });
+      return {
+        tran_no: (tranNoInput.value || "").trim(),
+        po_no: (poNoInput.value || "").trim(),
+        gr_no: (grNoSelect.value || "").trim(),
+        supplier_invoice_no: (supplierInvoiceInput.value || "").trim(),
+        invoice_date: invoiceDateInput.value || "",
+        location: (locationSelect.value || "").trim(),
+        paid_amount: 0,
+        invoice_amount: toNumber(enteredAmountInput.value || 0),
+        items: rows
+      };
+    }
+
+    function prependRow(payload, response) {
+      var emptyRow = listBody.querySelector(".gr-empty-row");
+      if (emptyRow) emptyRow.remove();
+      var row = document.createElement("tr");
+      row.dataset.location = payload.location || "";
+      row.dataset.date = payload.invoice_date || "";
+      row.dataset.status = response.status || "";
+      row.dataset.paymentStatus = response.payment_status || "";
+      row.innerHTML =
+        "<td><input type='checkbox' aria-label='Select row'></td>" +
+        "<td>" + (response.tran_no || payload.tran_no || "") + "</td>" +
+        "<td>" + (payload.invoice_date || "") + "</td>" +
+        "<td>" + (supplierInput.value || "") + "</td>" +
+        "<td>" + (payload.supplier_invoice_no || "") + "</td>" +
+        "<td>" + toNumber(response.sub_total).toFixed(2) + "</td>" +
+        "<td>" + toNumber(response.tax).toFixed(2) + "</td>" +
+        "<td>" + toNumber(response.net_total).toFixed(2) + "</td>" +
+        "<td>" + toNumber(response.paid_amount).toFixed(2) + "</td>" +
+        "<td class='pi-balance'>" + toNumber(response.balance_amount).toFixed(2) + "</td>";
+      listBody.insertAdjacentElement("afterbegin", row);
+    }
+
+    function filterRows() {
+      var tranNo = (filterTranNo.value || "").trim().toLowerCase();
+      var fromDate = filterFromDate.value || "";
+      var toDate = filterToDate.value || "";
+      var status = (filterStatus.value || "").trim().toLowerCase();
+      var location = (filterLocation.value || "").trim().toLowerCase();
+      var supplier = (filterSupplier.value || "").trim().toLowerCase();
+      var invoice = (filterInvoice.value || "").trim().toLowerCase();
+      var paymentStatus = (filterPaymentStatus.value || "").trim().toLowerCase();
+
+      Array.from(listBody.querySelectorAll("tr")).forEach(function (row) {
+        if (row.classList.contains("gr-empty-row")) return;
+        var rowTran = (row.cells[1] ? row.cells[1].textContent : "").trim().toLowerCase();
+        var rowDate = (row.dataset.date || "").trim();
+        var rowSupplier = (row.cells[3] ? row.cells[3].textContent : "").trim().toLowerCase();
+        var rowInvoice = (row.cells[4] ? row.cells[4].textContent : "").trim().toLowerCase();
+        var rowLocation = (row.dataset.location || "").trim().toLowerCase();
+        var rowStatus = (row.dataset.status || "").trim().toLowerCase();
+        var rowPayment = (row.dataset.paymentStatus || "").trim().toLowerCase();
+
+        var show =
+          (!tranNo || rowTran.indexOf(tranNo) > -1) &&
+          (!supplier || rowSupplier.indexOf(supplier) > -1) &&
+          (!invoice || rowInvoice.indexOf(invoice) > -1) &&
+          (!location || rowLocation === location) &&
+          (!status || rowStatus.indexOf(status) > -1) &&
+          (!paymentStatus || rowPayment.indexOf(paymentStatus) > -1) &&
+          (!fromDate || (rowDate && rowDate >= fromDate)) &&
+          (!toDate || (rowDate && rowDate <= toDate));
+        row.style.display = show ? "" : "none";
+      });
+    }
+
+    function resetEditor() {
+      tranNoInput.value = nextTranNo();
+      invoiceDateInput.value = "{{ pi_today }}";
+      grNoSelect.value = "";
+      poNoInput.value = "";
+      supplierInput.value = "";
+      locationSelect.value = "";
+      supplierInvoiceInput.value = "";
+      enteredAmountInput.value = "";
+      clearRows("Select a Goods Receipt to load items.");
+    }
+
+    openEditorBtn.addEventListener("click", function () {
+      resetEditor();
+      showEditor(true);
+    });
+
+    cancelEditorBtn.addEventListener("click", function () {
+      showEditor(false);
+    });
+
+    grNoSelect.addEventListener("change", function () {
+      loadGrDetails();
+    });
+
+    editorBody.addEventListener("input", function (event) {
+      if (event.target.classList.contains("pi-billed-qty")) {
+        updateTotals();
+      }
+    });
+
+    saveEditorBtn.addEventListener("click", async function () {
+      try {
+        var payload = collectPayload();
+        var response = await postJson(apiUrls.save, payload);
+        prependRow(payload, response);
+        showEditor(false);
+      } catch (error) {
+        window.alert(error.message || "Unable to save purchase invoice.");
+      }
+    });
+
+    if (searchBtn) searchBtn.addEventListener("click", filterRows);
+  })();
+</script>
+{% endblock %}

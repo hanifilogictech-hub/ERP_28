@@ -1,0 +1,287 @@
+{% extends "base_layout.html" %}
+
+{% block page_heading %}{% endblock %}
+
+{% block content %}
+<section class="erp-topbar">
+  <div class="erp-topbar-title">Dashboard</div>
+  <div class="erp-topbar-right">
+    <button class="topbar-icon-btn" id="quickLinksBtn" type="button" title="Quick Links">&#9638;</button>
+    <a class="topbar-icon-btn" href="{% url 'settings' %}" title="Settings">&#9881;</a>
+    <div class="profile-wrap">
+      <button class="topbar-icon-btn" id="profileMenuBtn" type="button" title="Profile">&#128100;</button>
+      <div class="profile-popup" id="profilePopup">
+        <a href="/?module=profile">&#128100; Profile</a>
+     <a href="{% url 'logout' %}">Log Out</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="quick-links-popup" id="quickLinksPopup">
+  <div class="quick-links-head">QUICK LINKS</div>
+  <div class="quick-links-grid">
+    <a href="/?module=customer">Customer</a>
+    <a href="/?module=product">Product</a>
+    <a href="/?module=purchase-invoice">Purchase Invoice</a>
+    <a href="/?module=sales-order">Sales Order</a>
+    <a href="/?module=invoice">Invoice</a>
+  </div>
+</div>
+
+<section class="tab-row" id="dashboardTabs">
+  <a class="tab-link active" href="#" data-dash-tab="all">My Dashboard</a>
+  <a class="tab-link" href="#" data-dash-tab="sales">Sales</a>
+  <a class="tab-link" href="#" data-dash-tab="purchase">Purchase</a>
+  <a class="tab-link" href="#" data-dash-tab="stock">Stock</a>
+  <a class="tab-link" href="#" data-dash-tab="finance">Finance</a>
+</section>
+
+<section class="kpi-strip">
+  <article class="kpi-box kpi-sales" data-dash-card="sales"><span>Total Sales Today</span><strong>{{ total_sales_today|floatformat:2 }}</strong><small>Yesterday: {{ sold_yesterday|floatformat:2 }}</small></article>
+  <article class="kpi-box kpi-purchases" data-dash-card="purchase"><span>Purchases Today</span><strong>{{ purchases_today|floatformat:2 }}</strong><small>Updated supplier purchases</small></article>
+  <article class="kpi-box kpi-due" data-dash-card="finance"><span>Due Amount</span><strong>{{ due_amount|floatformat:2 }}</strong><small>Pending from customers</small></article>
+  <article class="kpi-box kpi-stock" data-dash-card="stock"><span>Stock Value</span><strong>{{ stock_value|floatformat:2 }}</strong><small>Current inventory value</small></article>
+  <article class="kpi-box kpi-profit" data-dash-card="sales"><span>Profit</span><strong>{{ profit_total|floatformat:2 }}</strong><small>{{ growth_note }}</small></article>
+</section>
+
+<section class="dash-grid">
+  <article class="dash-panel" data-dash-section="purchase">
+    <h3>Recent Purchase Orders</h3>
+    <table class="dash-table">
+      <thead><tr><th>Order No</th><th>Date</th><th>Invoice</th><th>Supplier</th><th>Amount</th></tr></thead>
+      <tbody>
+        {% for row in recent_purchase_orders %}
+        <tr><td>{{ row.order_no }}</td><td>{{ row.order_date }}</td><td>{{ row.invoice_no }}</td><td>{{ row.supplier }}</td><td>{{ row.amount|floatformat:2 }}</td></tr>
+        {% empty %}<tr><td colspan="5" class="empty-cell">No Data Available</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </article>
+
+  <article class="dash-panel" data-dash-section="sales">
+    <h3>Recent Sales Orders</h3>
+    <table class="dash-table">
+      <thead><tr><th>Order No</th><th>Date</th><th>Invoice</th><th>Customer</th><th>Amount</th></tr></thead>
+      <tbody>
+        {% for row in recent_sales_orders %}
+        <tr><td>{{ row.order_no }}</td><td>{{ row.order_date }}</td><td>{{ row.invoice_no }}</td><td>{{ row.customer }}</td><td>{{ row.amount|floatformat:2 }}</td></tr>
+        {% empty %}<tr><td colspan="5" class="empty-cell">No Data Available</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </article>
+
+  <article class="dash-panel" data-dash-section="purchase">
+    <h3>Recent Purchase Invoices</h3>
+    <div class="metric-strip">
+      <div><strong>Total Purchase</strong><span>{{ purchase_status.total|floatformat:2 }}</span></div>
+      <div><strong>Total Outstanding</strong><span>{{ purchase_status.due|floatformat:2 }}</span></div>
+      <div><strong>Retained Qty</strong><span>{{ purchase_flow.retained_qty_total|floatformat:2 }}</span></div>
+    </div>
+    <table class="dash-table">
+      <thead><tr><th>Date</th><th>InvoiceNo</th><th>Supplier</th><th>Amount</th></tr></thead>
+      <tbody>
+        {% for row in recent_purchase_invoices %}
+        <tr><td>{{ row.invoice_date }}</td><td>{{ row.invoice_no }}</td><td>{{ row.supplier }}</td><td>{{ row.total_amount|floatformat:2 }}</td></tr>
+        {% empty %}<tr><td colspan="4" class="empty-cell">No Data Available</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </article>
+
+  <article class="dash-panel" data-dash-section="purchase">
+    <h3>Recent Goods Receipts</h3>
+    <table class="dash-table">
+      <thead><tr><th>GR No</th><th>Date</th><th>Supplier</th><th>Location</th><th>Items</th></tr></thead>
+      <tbody>
+        {% for row in recent_goods_receipts %}
+        <tr><td>{{ row.gr_no }}</td><td>{{ row.receipt_date }}</td><td>{{ row.supplier }}</td><td>{{ row.location }}</td><td>{{ row.items_count }}</td></tr>
+        {% empty %}<tr><td colspan="5" class="empty-cell">No Data Available</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </article>
+
+  <article class="dash-panel" data-dash-section="purchase">
+    <h3>Recent Goods Returns</h3>
+    <div class="metric-strip">
+      <div><strong>Received Qty</strong><span>{{ purchase_flow.received_qty_total|floatformat:2 }}</span></div>
+      <div><strong>Returned Qty</strong><span>{{ purchase_flow.returned_qty_total|floatformat:2 }}</span></div>
+    </div>
+    <table class="dash-table">
+      <thead><tr><th>Return No</th><th>Date</th><th>Supplier</th><th>Status</th><th>Amount</th></tr></thead>
+      <tbody>
+        {% for row in recent_goods_returns %}
+        <tr><td>{{ row.return_no }}</td><td>{{ row.return_date }}</td><td>{{ row.supplier }}</td><td>{{ row.status }}</td><td>{{ row.total_amount|floatformat:2 }}</td></tr>
+        {% empty %}<tr><td colspan="5" class="empty-cell">No Data Available</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </article>
+
+  <article class="dash-panel" data-dash-section="stock">
+    <h3>Stock Process Summary</h3>
+    <div class="metric-strip">
+      <div><strong>Pending Requests</strong><span>{{ stock_status.pending_requests }}</span></div>
+      <div><strong>Sent Transfers</strong><span>{{ stock_status.sent_transfers }}</span></div>
+      <div><strong>Pending Stock Takes</strong><span>{{ stock_status.pending_stock_takes }}</span></div>
+      <div><strong>Requested Qty</strong><span>{{ stock_flow.requested_qty_total|floatformat:2 }}</span></div>
+      <div><strong>Transferred Qty</strong><span>{{ stock_flow.transferred_qty_total|floatformat:2 }}</span></div>
+      <div><strong>Adjustment - Qty</strong><span>{{ stock_flow.adjustment_minus_total|floatformat:2 }}</span></div>
+    </div>
+    <table class="dash-table">
+      <thead><tr><th>StockReq No</th><th>Date</th><th>From</th><th>To</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for row in recent_stock_requests %}
+        <tr><td>{{ row.request_no }}</td><td>{{ row.request_date }}</td><td>{{ row.from_location }}</td><td>{{ row.to_location }}</td><td>{{ row.status }}</td></tr>
+        {% empty %}<tr><td colspan="5" class="empty-cell">No Data Available</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </article>
+
+  <article class="dash-panel" data-dash-section="stock">
+    <h3>Recent Stock Transfers</h3>
+    <table class="dash-table">
+      <thead><tr><th>Transfer No</th><th>Date</th><th>From</th><th>To</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for row in recent_stock_transfers %}
+        <tr><td>{{ row.transfer_no }}</td><td>{{ row.transfer_date }}</td><td>{{ row.from_location }}</td><td>{{ row.to_location }}</td><td>{{ row.status }}</td></tr>
+        {% empty %}<tr><td colspan="5" class="empty-cell">No Data Available</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </article>
+
+  <article class="dash-panel" data-dash-section="stock">
+    <h3>Recent Stock Adjustments</h3>
+    <table class="dash-table">
+      <thead><tr><th>Adj No</th><th>Date</th><th>Location</th><th>User</th><th>Remarks</th></tr></thead>
+      <tbody>
+        {% for row in recent_stock_adjustments %}
+        <tr><td>{{ row.adjustment_no }}</td><td>{{ row.adjustment_date }}</td><td>{{ row.location }}</td><td>{{ row.created_by }}</td><td>{{ row.remarks }}</td></tr>
+        {% empty %}<tr><td colspan="5" class="empty-cell">No Data Available</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </article>
+
+  <article class="dash-panel" data-dash-section="stock">
+    <h3>Recent Stock Takes</h3>
+    <table class="dash-table">
+      <thead><tr><th>StockTake No</th><th>Date</th><th>Location</th><th>Status</th><th>User</th></tr></thead>
+      <tbody>
+        {% for row in recent_stock_takes %}
+        <tr><td>{{ row.stock_take_no }}</td><td>{{ row.stock_take_date }}</td><td>{{ row.location }}</td><td>{{ row.status }}</td><td>{{ row.user_name }}</td></tr>
+        {% empty %}<tr><td colspan="5" class="empty-cell">No Data Available</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </article>
+
+  <article class="dash-panel" data-dash-section="sales">
+    <h3>Recent Sales Invoices</h3>
+    <div class="metric-strip">
+      <div><strong>Total Sales</strong><span>{{ sales_status.total|floatformat:2 }}</span></div>
+      <div><strong>Total Outstanding</strong><span>{{ sales_status.due|floatformat:2 }}</span></div>
+    </div>
+    <table class="dash-table">
+      <thead><tr><th>Date</th><th>InvoiceNo</th><th>Customer</th><th>Amount</th></tr></thead>
+      <tbody>
+        {% for row in recent_sales_invoices %}
+        <tr><td>{{ row.invoice_date }}</td><td>{{ row.invoice_no }}</td><td>{{ row.customer }}</td><td>{{ row.total_amount|floatformat:2 }}</td></tr>
+        {% empty %}<tr><td colspan="4" class="empty-cell">No Data Available</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </article>
+
+  <article class="dash-panel" data-dash-section="sales">
+    <h3>Weekly Sales Data</h3>
+    <table class="dash-table">
+      <thead><tr><th>Day</th><th>Current Week</th><th>Last Week</th><th>Difference</th></tr></thead>
+      <tbody>
+        {% for row in weekly_sales %}
+        <tr><td>{{ row.day }}</td><td>{{ row.current|floatformat:2 }}</td><td>{{ row.last|floatformat:2 }}</td><td>{{ row.diff|floatformat:2 }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </article>
+
+  <article class="dash-panel" data-dash-section="sales">
+    <h3>Last 30 Days Sales</h3>
+    <div class="chart-placeholder">
+      <div class="chart-y-ticks">{% for t in sales_30d.y_ticks %}<span>{{ t }}</span>{% endfor %}</div>
+      <div class="chart-bars">{% for point in sales_30d.points %}<div class="chart-col"><i style="height: {{ point.height }}%;"></i><small>{{ point.label }}</small></div>{% endfor %}</div>
+    </div>
+  </article>
+
+  <article class="dash-panel" data-dash-section="sales">
+    <h3>Last 12 Weeks Sales</h3>
+    <div class="chart-placeholder purple">
+      <div class="chart-y-ticks">{% for t in sales_12w.y_ticks %}<span>{{ t }}</span>{% endfor %}</div>
+      <div class="chart-bars">{% for point in sales_12w.points %}<div class="chart-col"><i style="height: {{ point.height }}%;"></i><small>{{ point.label }}</small></div>{% endfor %}</div>
+    </div>
+  </article>
+
+  <article class="dash-panel" data-dash-section="sales">
+    <h3>Last 12 Months Sales</h3>
+    <div class="chart-placeholder green">
+      <div class="chart-y-ticks">{% for t in sales_12m.y_ticks %}<span>{{ t }}</span>{% endfor %}</div>
+      <div class="chart-bars">{% for point in sales_12m.points %}<div class="chart-col"><i style="height: {{ point.height }}%;"></i><small>{{ point.label }}</small></div>{% endfor %}</div>
+    </div>
+  </article>
+
+  <article class="dash-panel" data-dash-section="sales">
+    <h3>Sales Analysis Data</h3>
+    <div class="analysis-listing">
+      <p><span>Total Sales</span><b>{{ sales_analysis.total_sales|floatformat:2 }}</b></p>
+      <p><span>Total Bills</span><b>{{ sales_analysis.total_bills }}</b></p>
+      <p><span>Total Items Sold</span><b>{{ sales_analysis.total_items }}</b></p>
+      <p><span>Average Bill</span><b>{{ sales_analysis.avg_bill|floatformat:2 }}</b></p>
+      <p><span>Total Cost</span><b>{{ sales_analysis.total_cost|floatformat:2 }}</b></p>
+      <p><span>Profit</span><b>{{ sales_analysis.profit|floatformat:2 }}</b></p>
+      <p><span>Margin</span><b>{{ sales_analysis.margin|floatformat:2 }}%</b></p>
+    </div>
+  </article>
+
+  <article class="dash-panel" data-dash-section="sales">
+    <h3>Product Department Sales</h3>
+    <table class="dash-table">
+      <thead><tr><th>Department</th><th>Sales</th></tr></thead>
+      <tbody>{% for row in department_sales %}<tr><td>{{ row.name }}</td><td>{{ row.amount|floatformat:2 }}</td></tr>{% empty %}<tr><td colspan="2" class="empty-cell">No Data Available</td></tr>{% endfor %}</tbody>
+    </table>
+  </article>
+
+  <article class="dash-panel" data-dash-section="sales">
+    <h3>Product Category Sales</h3>
+    <table class="dash-table">
+      <thead><tr><th>Category</th><th>Sales</th></tr></thead>
+      <tbody>{% for row in category_sales %}<tr><td>{{ row.name }}</td><td>{{ row.amount|floatformat:2 }}</td></tr>{% empty %}<tr><td colspan="2" class="empty-cell">No Data Available</td></tr>{% endfor %}</tbody>
+    </table>
+  </article>
+
+  <article class="dash-panel" data-dash-section="sales">
+    <h3>Popular Products</h3>
+    <table class="dash-table">
+      <thead><tr><th>Product Name</th><th>Sold Qty</th><th>Sales</th></tr></thead>
+      <tbody>{% for row in popular_products %}<tr><td>{{ row.product_name }}</td><td>{{ row.sold_qty }}</td><td>{{ row.amount|floatformat:2 }}</td></tr>{% empty %}<tr><td colspan="3" class="empty-cell">No Data Available</td></tr>{% endfor %}</tbody>
+    </table>
+  </article>
+
+  <article class="dash-panel" data-dash-section="purchase">
+    <h3>Minimum Qty Analysis</h3>
+    <table class="dash-table">
+      <thead><tr><th>Product</th><th>Stock Qty</th><th>Reorder Qty</th><th>Balance Value</th></tr></thead>
+      <tbody>{% for row in minimum_qty %}<tr><td>{{ row.product_name }}</td><td>{{ row.stock_qty }}</td><td>{{ row.reorder_qty }}</td><td>{{ row.balance_value|floatformat:2 }}</td></tr>{% empty %}<tr><td colspan="4" class="empty-cell">No Data Available</td></tr>{% endfor %}</tbody>
+    </table>
+  </article>
+
+  <article class="dash-panel" data-dash-section="finance">
+    <h3>Last 30 Days Profit Sales</h3>
+    <div class="chart-placeholder">
+      <div class="chart-y-ticks">{% for t in profit_30d.y_ticks %}<span>{{ t }}</span>{% endfor %}</div>
+      <div class="chart-bars">{% for point in profit_30d.points %}<div class="chart-col"><i style="height: {{ point.height }}%;"></i><small>{{ point.label }}</small></div>{% endfor %}</div>
+    </div>
+  </article>
+
+  <article class="dash-panel wide" data-dash-section="sales">
+    <h3>SalesMan Performance</h3>
+    <table class="dash-table">
+      <thead><tr><th>Salesman</th><th>Sales Amount</th></tr></thead>
+      <tbody>{% for row in salesman_performance %}<tr><td>{{ row.salesman }}</td><td>{{ row.amount|floatformat:2 }}</td></tr>{% empty %}<tr><td colspan="2" class="empty-cell">No Data Available</td></tr>{% endfor %}</tbody>
+    </table>
+  </article>
+</section>
+{% endblock %}

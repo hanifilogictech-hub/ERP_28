@@ -1,0 +1,248 @@
+{% extends "base_layout.html" %}
+{% block content %}
+
+<div class="page-card">
+
+    <!-- TOP BAR -->
+    <div class="erp-topbar">
+        <div class="erp-topbar-title">
+            Sales Quotation Management
+        </div>
+
+        <!-- FIXED SPLIT DROPDOWN -->
+        <div class="dropdown">
+
+            <!-- MAIN BUTTON -->
+            <a href="{% url 'salesquotation_new' %}" class="filter-btn sm">
+                New Transaction
+            </a>
+
+            <!-- ARROW BUTTON -->
+            <button type="button" class="dropdown-toggle">
+                <i class="fa-solid fa-chevron-down"></i>
+            </button>
+
+            <!-- DROPDOWN MENU -->
+            <div class="dropdown-menu">
+                <a href="#">Approve Sales Quotation</a>
+                <a href="#">Unapprove Sales Quotation</a>
+                <a href="#">Repeat Sales Quotation</a>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- FILTER ROW 1 -->
+    <div class="filter-row sales-row-1">
+
+        <input type="text" class="filter-input sm" placeholder="Transaction No">
+
+        <button class="filter-btn sm">
+            Search
+        </button>
+
+        <button class="icon-btn">
+            <i class="fa-solid fa-print"></i>
+        </button>
+
+        <button class="icon-btn delete-btn">
+            <i class="fa-solid fa-trash"></i>
+        </button>
+
+        <div class="date-field">
+            <label>From Date</label>
+            <input type="date" class="filter-input sm">
+        </div>
+
+        <div class="date-field">
+            <label>To Date</label>
+            <input type="date" class="filter-input sm">
+        </div>
+
+    </div>
+
+    <!-- FILTER ROW 2 -->
+    <div class="filter-row sales-row-2">
+
+        <div class="custom-dropdown sm">
+            <div class="dropdown-label">
+                Select Location <i class="fas fa-chevron-down"></i>
+            </div>
+
+            <div class="dropdown-menu-custom">
+                <input type="text" class="dropdown-search" placeholder="Search location...">
+            </div>
+        </div>
+
+        <input type="text" class="filter-input sm" placeholder="Customer">
+
+        <div class="custom-dropdown approved-status-dropdown">
+
+            <div class="dropdown-label">
+                Select All Approved Status
+                <i class="fa-solid fa-chevron-down arrow"></i>
+            </div>
+
+            <div class="dropdown-menu-custom">
+                <input type="text" class="dropdown-search">
+
+                <div class="dropdown-options">
+                    <div class="dropdown-item">Select All Approved Status</div>
+                    <div class="dropdown-item">Approved</div>
+                    <div class="dropdown-item">Unapproved</div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- TABLE PANEL -->
+    <div class="dash-panel wide">
+        <table class="dash-table">
+            <thead>
+                <tr>
+                    <th><input type="checkbox"></th>
+                    <th>Tran Desc</th>
+                    <th>Customer</th>
+                    <th>Approved</th>
+                    <th>Tax</th>
+                    <th>NetTotal</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                <!-- <tr>
+                    <td colspan="6" class="empty-cell">
+                        No data available in table
+                    </td>
+                </tr> -->
+                {% if quotations %}
+                {% for q in quotations %}
+                <tr>
+                    <td><input type="checkbox"></td>
+                    <td>{{ q.tran_no }}</td>
+                    <td>{{ q.customer_name }}</td>
+                    <td>{{ q.approved|yesno:"Approved,Unapproved" }}</td>
+                    <td>0.00</td>
+                    <td>{{ q.total_amount }}</td>
+                </tr>
+                {% endfor %}
+            {% else %}
+            <tr>
+                <td colspan="6" class="empty-cell">
+                    No data available in table
+                </td>
+            </tr>
+            {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- TABLE FOOTER -->
+    <div class="table-bottom">
+        <div class="records-info">
+           Total Records : {{ quotations.count }}
+        </div>
+
+        <div class="pagination">
+            <button class="page-btn">Previous</button>
+            <button class="page-btn">Next</button>
+        </div>
+    </div>
+
+</div>
+
+<script>
+
+// =====================================
+// 1️⃣ FIXED TOP RIGHT DROPDOWN
+// =====================================
+const dropdownToggle = document.querySelector(".dropdown-toggle");
+const dropdown = document.querySelector(".dropdown");
+
+if (dropdownToggle && dropdown) {
+
+    dropdownToggle.addEventListener("click", function(e) {
+        e.stopPropagation();
+        dropdown.classList.toggle("active");
+    });
+
+    document.addEventListener("click", function(e) {
+        if (!e.target.closest(".dropdown")) {
+            dropdown.classList.remove("active");
+        }
+    });
+}
+
+
+// =====================================
+// 2️⃣ CUSTOM SEARCHABLE DROPDOWNS
+// =====================================
+document.querySelectorAll(".custom-dropdown").forEach(function(dropdownContainer) {
+
+    const label = dropdownContainer.querySelector(".dropdown-label");
+    const menu = dropdownContainer.querySelector(".dropdown-menu-custom");
+    const searchInput = dropdownContainer.querySelector(".dropdown-search");
+    const items = dropdownContainer.querySelectorAll(".dropdown-item");
+
+    if (!label || !menu) return;
+
+    label.addEventListener("click", function(e) {
+        e.stopPropagation();
+
+        document.querySelectorAll(".dropdown-menu-custom").forEach(function(otherMenu) {
+            if (otherMenu !== menu) {
+                otherMenu.style.display = "none";
+            }
+        });
+
+        menu.style.display =
+            menu.style.display === "block" ? "none" : "block";
+
+        if (searchInput) {
+            searchInput.focus();
+        }
+    });
+
+    menu.addEventListener("click", function(e) {
+        e.stopPropagation();
+    });
+
+    if (searchInput) {
+        searchInput.addEventListener("keyup", function() {
+            const filter = this.value.toLowerCase();
+            items.forEach(function(item) {
+                const text = item.textContent.toLowerCase();
+                item.style.display =
+                    text.includes(filter) ? "block" : "none";
+            });
+        });
+    }
+
+    items.forEach(function(item) {
+        item.addEventListener("click", function() {
+            const icon = label.querySelector("i");
+            label.innerHTML = this.textContent + " ";
+            if (icon) {
+                label.appendChild(icon);
+            }
+            menu.style.display = "none";
+        });
+    });
+
+});
+
+
+// =====================================
+// 3️⃣ CLOSE ALL CUSTOM DROPDOWNS
+// =====================================
+document.addEventListener("click", function() {
+    document.querySelectorAll(".dropdown-menu-custom").forEach(function(menu) {
+        menu.style.display = "none";
+    });
+});
+
+</script>
+
+{% endblock %}

@@ -1,0 +1,180 @@
+{% extends 'base_layout.html' %}
+{% load static %}
+
+{% block content %}
+
+<div class="analysis-container">
+    <div class="top-buttons">
+        <button class="btn-yellow">Update sales</button>
+        <button class="btn-yellow">Print</button>
+        <button class="btn-yellow">Search</button>
+    </div>
+
+    <div class="filter-card">
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>Location</label>
+                <select>
+                    <option>Select</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>From Date</label>
+                <input type="date">
+            </div>
+
+            <div class="form-group">
+                <label>To Date</label>
+                <input type="date">
+            </div>
+
+            <div class="form-group">
+                <label>product code</label>
+                <input type="text" placeholder="Enter product code">
+            </div>
+
+            <div class="form-group">
+                <label>product name</label>
+                <input type="text" placeholder="Enter product name">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>Department</label>
+                <select>
+                    <option>Select Department</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Category</label>
+                <select>
+                    <option>Select Category</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>sub category
+                </label>
+                <select>
+                    <option>Select sub Category</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Supplier</label>
+                <select>
+                    <option>Select Supplier</option>
+                </select>
+            </div>
+          <div class="form-group">
+                <label>supply by purchase</label>
+                <select>
+                    <option>Select </option>
+                </select>
+            </div>
+            
+        </div>
+
+    </div>
+
+    <div class="table-card">
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>product code</th>
+                    <th>product name</th>
+                    <th>department</th>
+                    <th>category</th>
+                    <th>sub category</th>
+                    <th>Supplier</th>
+                    <th>supply by purchase</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td colspan="9">No Data Found</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+</div>
+<style>
+.analysis-container { padding:20px; }
+.analysis-title { font-size:22px; font-weight:600; color:#2c3e50; margin-bottom:15px; }
+
+.top-buttons { text-align:right; margin-bottom:10px; }
+
+.btn-yellow {
+    background:#ffc107;
+    border:none;
+    padding:7px 15px;
+    font-size:13px;
+    font-weight:600;
+    border-radius:4px;
+}
+
+.btn-yellow:hover { background:#e0a800; }
+
+.filter-card {
+    background:#fff;
+    padding:20px;
+    border-radius:6px;
+    border:1px solid #ddd;
+}
+
+.form-row {
+    display:flex;
+    gap:15px;
+    margin-bottom:15px;
+}
+
+.form-group { flex:1; }
+
+.form-group label {
+    font-size:13px;
+    font-weight:600;
+    display:block;
+    margin-bottom:5px;
+}
+
+.form-group input,
+.form-group select {
+    width:100%;
+    height:36px;
+    padding:5px 10px;
+    font-size:13px;
+    border-radius:4px;
+    border:1px solid #ccc;
+}
+
+.table-card {
+    margin-top:20px;
+    background:#fff;
+    border:1px solid #ddd;
+    padding:15px;
+}
+
+table {
+    width:100%;
+    border-collapse:collapse;
+    font-size:13px;
+}
+
+thead {
+    background:#2c3e50;
+    color:#fff;
+}
+
+th, td {
+    padding:8px;
+    border:1px solid #ddd;
+    text-align:center;
+}
+</style>
+{% endblock %}

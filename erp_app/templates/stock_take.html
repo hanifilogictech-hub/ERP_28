@@ -1,0 +1,92 @@
+{% extends "base_layout.html" %}
+
+{% block page_heading %}
+<div class="po-heading-bar">
+  <h1>StockTake Management</h1>
+  <a class="po-new-btn stock-new-btn" href="{% url 'stock_take_new' %}">New Transaction</a>
+</div>
+{% endblock %}
+
+{% block content %}
+<section class="purchase-window purchase-order-window goods-receipt-window stock-take-window">
+  <div class="doc-body">
+    <div class="transfer-tab-row">
+      <span class="transfer-tab active">StockTake Management</span>
+    </div>
+
+    <div class="gr-row stock-filter-row">
+      <div class="gr-field-group">
+        <label class="po-label" for="stk_filter_tran_no">Transaction No</label>
+        <input id="stk_filter_tran_no" class="po-no-input" type="text" placeholder="Transaction No">
+      </div>
+      <div class="gr-field-group">
+        <label class="po-label" for="stk_filter_from_date">From Date</label>
+        <input id="stk_filter_from_date" class="po-field-date" type="date">
+      </div>
+      <div class="gr-field-group">
+        <label class="po-label" for="stk_filter_to_date">To Date</label>
+        <input id="stk_filter_to_date" class="po-field-date" type="date">
+      </div>
+      <div class="gr-actions stock-actions">
+        <button type="button" class="po-search-btn" title="Search" aria-label="Search">&#128269;</button>
+        <button type="button" class="gr-icon-btn" title="Print" aria-label="Print">&#128424;</button>
+        <button type="button" class="gr-icon-btn gr-delete-btn" title="Delete" aria-label="Delete">&#128465;</button>
+      </div>
+    </div>
+
+    <div class="gr-row stock-filter-row">
+      <div class="gr-field-group">
+        <label class="po-label" for="stk_filter_status">Status</label>
+        <select id="stk_filter_status" class="po-field-select">
+          <option value="">Status</option>
+          {% for status in stk_statuses %}
+          <option value="{{ status }}">{{ status }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="gr-field-group">
+        <label class="po-label" for="stk_filter_location">Select Location</label>
+        <select id="stk_filter_location" class="po-field-select">
+          <option value="">Select Location</option>
+          {% for location in stk_locations %}
+          <option value="{{ location }}">{{ location }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <table class="doc-table po-items-table gr-items-table stock-grid stocktake-grid">
+      <thead>
+        <tr>
+          <th><input type="checkbox" aria-label="Select all"></th>
+          <th>StockCountNo</th>
+          <th>StockCountDate</th>
+          <th>LocationCode</th>
+          <th>StockTakeStatus</th>
+          <th>Remarks</th>
+          <th>UserName</th>
+          <th>LastStockTakeDate</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in stk_rows %}
+        <tr>
+          <td><input type="checkbox" aria-label="Select row"></td>
+          <td>{{ row.stock_count_no }}</td>
+          <td>{{ row.stock_count_date }}</td>
+          <td>{{ row.location_code }}</td>
+          <td><span class="po-status-pill">{{ row.stock_take_status }}</span></td>
+          <td>{{ row.remarks }}</td>
+          <td>{{ row.user_name }}</td>
+          <td>{{ row.last_stock_take_date }}</td>
+        </tr>
+        {% empty %}
+        <tr class="gr-empty-row">
+          <td colspan="8">No data available in table</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

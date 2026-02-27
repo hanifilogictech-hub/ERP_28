@@ -1,0 +1,914 @@
+{% extends "base_layout.html" %}
+
+{% block page_heading %}
+<div class="po-heading-bar">
+  <h1>{{ page_title }}</h1>
+  <button type="button" class="po-new-btn" id="po-open-editor-btn">New Purchase</button>
+</div>
+{% endblock %}
+
+{% block content %}
+{{ po_suppliers|json_script:"po-suppliers-data" }}
+{{ po_products|json_script:"po-products-data" }}
+{{ po_warehouses|json_script:"po-warehouses-data" }}
+{{ po_payment_terms|json_script:"po-payment-terms-data" }}
+
+<section class="purchase-window purchase-order-window" id="po-list-view">
+  <div class="doc-body">
+    <div class="po-single-row">
+      <div class="po-no-group">
+        <label class="po-label" for="po_no">Purchase Order No :</label>
+        <input id="po_no" class="po-no-input" type="text" value="{{ po_rows.0.po_no|default:'PO-101' }}" readonly>
+      </div>
+
+      <div class="po-field-group">
+        <label class="po-label" for="warehouse_top">Warehouse</label>
+        <select id="warehouse_top" class="po-field-select" name="warehouse_top">
+          <option value="">Select</option>
+          {% for warehouse in po_warehouses %}
+          <option value="{{ warehouse }}">{{ warehouse }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="po-field-group">
+        <label class="po-label" for="supplier_top">Supplier</label>
+        <select id="supplier_top" class="po-field-select" name="supplier_top">
+          <option value="">Select</option>
+          {% for supplier in po_suppliers %}
+          <option value="{{ supplier.code }}">{{ supplier.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="po-field-group">
+        <label class="po-label" for="status_top">Status</label>
+        <select id="status_top" class="po-field-select" name="status_top">
+          <option value="">Select</option>
+          <option>Draft</option>
+          <option>Approved</option>
+          <option>Cancelled</option>
+          <option>Closed</option>
+        </select>
+      </div>
+
+      <div class="po-field-group">
+        <label class="po-label" for="from_date">From Date</label>
+        <input
+          id="from_date"
+          class="po-field-date"
+          type="text"
+          name="from_date"
+          placeholder="dd/mm/yyyy"
+          onfocus="this.type='date'"
+          onblur="if(!this.value)this.type='text'"
+        >
+      </div>
+
+      <div class="po-field-group">
+        <label class="po-label" for="to_date">To Date</label>
+        <input
+          id="to_date"
+          class="po-field-date"
+          type="text"
+          name="to_date"
+          placeholder="dd/mm/yyyy"
+          onfocus="this.type='date'"
+          onblur="if(!this.value)this.type='text'"
+        >
+      </div>
+
+      <div class="po-field-group po-search-group">
+        <label class="po-label">&nbsp;</label>
+        <button type="button" id="po-search-btn" class="po-search-btn" title="Search" aria-label="Search">&#128269;</button>
+      </div>
+    </div>
+
+    <table class="doc-table po-items-table">
+      <colgroup>
+        <col style="width: 14%">
+        <col style="width: 15%">
+        <col style="width: 9%">
+        <col style="width: 16%">
+        <col style="width: 10%">
+        <col style="width: 8%">
+        <col style="width: 14%">
+        <col style="width: 14%">
+      </colgroup>
+      <thead>
+        <tr>
+          <th>PO No</th>
+          <th>Item</th>
+          <th>Qty</th>
+          <th>Supplier Name</th>
+          <th>Unit Price</th>
+          <th>Tax %</th>
+          <th>Net Total</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if po_rows %}
+        {% for row in po_rows %}
+        <tr data-warehouse="{{ row.warehouse }}" data-po-date="{{ row.po_date }}">
+          <td><input type="text" class="po-cell-input" value="{{ row.po_no }}" readonly></td>
+          <td><input type="text" class="po-cell-input" value="{{ row.item }}" readonly></td>
+          <td><input type="text" class="po-cell-input" value="{{ row.qty }}" readonly></td>
+          <td><input type="text" class="po-cell-input" value="{{ row.supplier_name }}" readonly></td>
+          <td><input type="text" class="po-cell-input" value="{{ row.unit_price|floatformat:2 }}" readonly></td>
+          <td><input type="text" class="po-cell-input" value="{{ row.tax_percent|floatformat:2 }}" readonly></td>
+          <td><input type="text" class="po-cell-input" value="{{ row.net_total|floatformat:2 }}" readonly></td>
+          <td><span class="po-status-pill">{{ row.status }}</span></td>
+        </tr>
+        {% endfor %}
+        {% else %}
+        <tr data-warehouse="" data-po-date="">
+          <td><input type="text" class="po-cell-input" value="" readonly></td>
+          <td><input type="text" class="po-cell-input" value="" readonly></td>
+          <td><input type="text" class="po-cell-input" value="" readonly></td>
+          <td><input type="text" class="po-cell-input" value="" readonly></td>
+          <td><input type="text" class="po-cell-input" value="" readonly></td>
+          <td><input type="text" class="po-cell-input" value="" readonly></td>
+          <td><input type="text" class="po-cell-input" value="" readonly></td>
+          <td><span class="po-status-pill">Draft</span></td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+
+  </div>
+</section>
+
+<section class="po-editor-panel" id="po-editor-view" hidden>
+  <h2>Add/Edit Purchase Order</h2>
+
+  <div class="po-editor-head">
+    <div class="po-editor-field">
+      <label for="po_tran_no">PO Number</label>
+      <input id="po_tran_no" type="text" readonly>
+    </div>
+    <div class="po-editor-field">
+      <label for="po_tran_date">Purchase Date</label>
+      <input id="po_tran_date" type="date" value="{{ po_today }}">
+    </div>
+    <div class="po-editor-field">
+      <label for="po_supplier_select">Supplier</label>
+      <div class="po-field-inline">
+        <select id="po_supplier_select">
+          <option value="">Select Supplier</option>
+          {% for supplier in po_suppliers %}
+          <option value="{{ supplier.code }}">{{ supplier.name }}</option>
+          {% endfor %}
+        </select>
+        <button type="button" class="po-inline-add" id="po-add-supplier-btn">+ Add</button>
+      </div>
+    </div>
+    <div class="po-editor-field">
+      <label for="po_warehouse">Warehouse</label>
+      <div class="po-field-inline">
+        <select id="po_warehouse">
+          <option value="">Select Warehouse</option>
+          {% for warehouse in po_warehouses %}
+          <option value="{{ warehouse }}">{{ warehouse }}</option>
+          {% endfor %}
+        </select>
+        <button type="button" class="po-inline-add" id="po-add-warehouse-btn">+ Add</button>
+      </div>
+    </div>
+    <div class="po-editor-field">
+      <label for="po_payment_terms">Payment Terms</label>
+      <select id="po_payment_terms">
+        <option value="">Select Terms</option>
+        {% for payment_term in po_payment_terms %}
+        <option value="{{ payment_term }}">{{ payment_term }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="po-editor-field">
+      <label for="po_status">Status</label>
+      <select id="po_status">
+        <option value="Draft">Draft</option>
+        <option value="Approved">Approved</option>
+        <option value="Cancelled">Cancelled</option>
+        <option value="Closed">Closed</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="po-editor-details">
+    <div class="po-editor-supplier">
+      <div class="po-editor-col">
+        <label>Supplier Code</label><input id="po_supplier_code" class="po-readonly-field" type="text" readonly>
+        <label>Supplier Name</label><input id="po_supplier_name" class="po-readonly-field" type="text" readonly>
+        <label>Contact Person</label><input id="po_contact_person" class="po-readonly-field" type="text" readonly>
+      </div>
+      <div class="po-editor-col">
+        <label>Address</label><input id="po_supplier_address" class="po-readonly-field" type="text" readonly>
+        <label>Country</label><input id="po_supplier_country" class="po-readonly-field" type="text" readonly>
+        <label>Currency</label><input id="po_currency" class="po-readonly-field" type="text" readonly>
+      </div>
+    </div>
+  </div>
+
+  <table class="po-editor-table">
+    <thead>
+      <tr>
+        <th>S No</th>
+        <th>Product</th>
+        <th>Description</th>
+        <th>Qty</th>
+        <th>Unit Price</th>
+        <th>Discount %</th>
+        <th>Tax %</th>
+        <th>Line Total</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>
+          <select class="po-product-select">
+            <option value="">Select Product</option>
+            {% for product in po_products %}
+            <option value="{{ product.code }}">{{ product.name }}</option>
+            {% endfor %}
+          </select>
+        </td>
+        <td><input class="po-line-description po-readonly-field" type="text" readonly></td>
+        <td><input class="po-line-qty" type="number" min="0" value="0"></td>
+        <td><input class="po-line-price" type="number" step="0.01" min="0" value="0"></td>
+        <td><input class="po-line-discount" type="number" step="0.01" min="0" value="0"></td>
+        <td><input class="po-line-tax" type="number" step="0.01" min="0" value="0"></td>
+        <td><input class="po-line-total po-readonly-field" type="number" step="0.01" min="0" value="0" readonly></td>
+        <td class="po-editor-actions">
+          <button type="button" data-editor-action="delete" title="Delete row" aria-label="Delete row">&#128465;</button>
+          <button type="button" data-editor-action="add" title="Add row" aria-label="Add row">+</button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="po-table-tools">
+    <button type="button" class="po-inline-add" id="po-add-product-btn">+ Add Product Option</button>
+  </div>
+
+  <div class="po-editor-footer">
+    <div>Subtotal: $ <strong id="po_subtotal">0.00</strong></div>
+    <div>Tax: $ <strong id="po_tax_total">0.00</strong></div>
+    <div class="po-editor-net">Grand Total: $ <strong id="po_grand_total">0.00</strong></div>
+  </div>
+
+  <div class="po-editor-buttons">
+    <button type="button" id="po-cancel-editor-btn" class="po-editor-cancel">Cancel</button>
+    <button type="button" id="po-save-editor-btn" class="po-editor-save" data-po-action="save">Save</button>
+    <button type="button" id="po-submit-editor-btn" class="po-editor-save po-editor-action" data-po-action="submit">Submit</button>
+    <button type="button" id="po-approve-editor-btn" class="po-editor-save po-editor-action" data-po-action="approve">Approve</button>
+    <button type="button" id="po-cancel-order-btn" class="po-editor-cancel po-editor-action" data-po-action="cancel_order">Cancel PO</button>
+  </div>
+</section>
+
+<script>
+  (function () {
+    var suppliers = JSON.parse(document.getElementById("po-suppliers-data").textContent || "[]");
+    var products = JSON.parse(document.getElementById("po-products-data").textContent || "[]");
+    var tableBody = document.querySelector(".po-items-table tbody");
+    var openEditorBtn = document.getElementById("po-open-editor-btn");
+    var cancelEditorBtn = document.getElementById("po-cancel-editor-btn");
+    var listView = document.getElementById("po-list-view");
+    var editorView = document.getElementById("po-editor-view");
+    var headingBar = document.querySelector(".po-heading-bar");
+    var editorTableBody = document.querySelector(".po-editor-table tbody");
+    var actionButtons = Array.from(document.querySelectorAll("[data-po-action]"));
+    var listPoNo = document.getElementById("po_no");
+    var listSupplier = document.getElementById("supplier_top");
+    var listWarehouse = document.getElementById("warehouse_top");
+    var listStatus = document.getElementById("status_top");
+    var listFromDate = document.getElementById("from_date");
+    var listToDate = document.getElementById("to_date");
+    var searchBtn = document.getElementById("po-search-btn");
+    var poTranNo = document.getElementById("po_tran_no");
+    var poTranDate = document.getElementById("po_tran_date");
+    var poSupplierSelect = document.getElementById("po_supplier_select");
+    var poWarehouse = document.getElementById("po_warehouse");
+    var poPaymentTerms = document.getElementById("po_payment_terms");
+    var poStatus = document.getElementById("po_status");
+    var poSupplierCode = document.getElementById("po_supplier_code");
+    var poSupplierName = document.getElementById("po_supplier_name");
+    var poContactPerson = document.getElementById("po_contact_person");
+    var poSupplierAddress = document.getElementById("po_supplier_address");
+    var poSupplierCountry = document.getElementById("po_supplier_country");
+    var poCurrency = document.getElementById("po_currency");
+    var addSupplierBtn = document.getElementById("po-add-supplier-btn");
+    var addWarehouseBtn = document.getElementById("po-add-warehouse-btn");
+    var addProductBtn = document.getElementById("po-add-product-btn");
+    var activeProductSelect = null;
+    var poSubtotalEl = document.getElementById("po_subtotal");
+    var poTaxTotalEl = document.getElementById("po_tax_total");
+    var poGrandTotalEl = document.getElementById("po_grand_total");
+    var apiUrls = {
+      addSupplier: "{% url 'po_add_supplier_api' %}",
+      addWarehouse: "{% url 'po_add_warehouse_api' %}",
+      addProduct: "{% url 'po_add_product_api' %}",
+      saveOrder: "{% url 'po_save_api' %}"
+    };
+    if (!tableBody || !editorTableBody) return;
+
+    function byCode(list, code) {
+      return list.find(function (item) { return item.code === code; }) || null;
+    }
+
+    function escapeHtml(value) {
+      return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function toNumber(value) {
+      var num = parseFloat(value);
+      return Number.isFinite(num) ? num : 0;
+    }
+
+    function formatMoney(value) {
+      return toNumber(value).toFixed(2);
+    }
+
+    async function postJson(url, payload) {
+      var response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload || {})
+      });
+      var data = {};
+      try {
+        data = await response.json();
+      } catch (_error) {
+        data = {};
+      }
+      if (!response.ok || data.ok === false) {
+        throw new Error(data.error || "Request failed.");
+      }
+      return data;
+    }
+
+    function nextPoNumber() {
+      var rows = Array.from(tableBody.querySelectorAll("tr"));
+      var max = 100;
+      rows.forEach(function (row) {
+        var input = row.cells[0] ? row.cells[0].querySelector("input") : null;
+        var text = (input ? input.value : "").trim();
+        var match = text.match(/^PO-(\d+)$/i);
+        if (match) max = Math.max(max, parseInt(match[1], 10));
+      });
+      return "PO-" + (max + 1);
+    }
+
+    function refreshEditorRowNumbers() {
+      Array.from(editorTableBody.querySelectorAll("tr")).forEach(function (row, index) {
+        if (row.cells[0]) row.cells[0].textContent = String(index + 1);
+      });
+    }
+
+    function createProductOptions() {
+      var options = ["<option value=''>Select Product</option>"];
+      products.forEach(function (product) {
+        options.push("<option value='" + escapeHtml(product.code) + "'>" + escapeHtml(product.name) + "</option>");
+      });
+      options.push("<option value='__add_new__'>+ Add New Product...</option>");
+      return options.join("");
+    }
+
+    function promptRequired(label, fallback) {
+      var value = window.prompt(label, fallback || "");
+      if (value === null) return null;
+      value = value.trim();
+      return value || null;
+    }
+
+    function appendSelectOption(selectEl, value, label) {
+      if (!selectEl || !value) return;
+      var exists = Array.from(selectEl.options).some(function (opt) { return opt.value === value; });
+      if (exists) return;
+      var option = document.createElement("option");
+      option.value = value;
+      option.text = label || value;
+      selectEl.add(option);
+    }
+
+    function refreshAllProductSelects() {
+      Array.from(editorTableBody.querySelectorAll(".po-product-select")).forEach(function (selectEl) {
+        var currentValue = selectEl.value;
+        selectEl.innerHTML = createProductOptions();
+        if (currentValue) selectEl.value = currentValue;
+      });
+    }
+
+    function productCodeFromName(name) {
+      var base = (name || "")
+        .toUpperCase()
+        .replace(/[^A-Z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 18) || "PRODUCT";
+      var code = "PRD-" + base;
+      var counter = 2;
+      while (products.some(function (item) { return item.code === code; })) {
+        code = "PRD-" + base + "-" + counter;
+        counter += 1;
+      }
+      return code;
+    }
+
+    function buildEditorRow() {
+      var row = document.createElement("tr");
+      row.innerHTML =
+        "<td></td>" +
+        "<td><select class='po-product-select'>" + createProductOptions() + "</select></td>" +
+        "<td><input class='po-line-description po-readonly-field' type='text' readonly></td>" +
+        "<td><input class='po-line-qty' type='number' min='0' value='0'></td>" +
+        "<td><input class='po-line-price' type='number' step='0.01' min='0' value='0'></td>" +
+        "<td><input class='po-line-discount' type='number' step='0.01' min='0' value='0'></td>" +
+        "<td><input class='po-line-tax' type='number' step='0.01' min='0' value='0'></td>" +
+        "<td><input class='po-line-total po-readonly-field' type='number' step='0.01' min='0' value='0' readonly></td>" +
+        "<td class='po-editor-actions'>" +
+          "<button type='button' data-editor-action='delete' title='Delete row' aria-label='Delete row'>&#128465;</button>" +
+          "<button type='button' data-editor-action='add' title='Add row' aria-label='Add row'>+</button>" +
+        "</td>";
+      return row;
+    }
+
+    function updateLineFromProduct(row) {
+      var productSelect = row.querySelector(".po-product-select");
+      var product = byCode(products, productSelect ? productSelect.value : "");
+      var descriptionInput = row.querySelector(".po-line-description");
+      var priceInput = row.querySelector(".po-line-price");
+      var taxInput = row.querySelector(".po-line-tax");
+      if (!product) {
+        if (descriptionInput) descriptionInput.value = "";
+        if (priceInput) priceInput.value = "0";
+        if (taxInput) taxInput.value = "0";
+        return;
+      }
+      if (descriptionInput) descriptionInput.value = product.description || product.name;
+      if (priceInput) priceInput.value = formatMoney(product.unit_price);
+      if (taxInput) taxInput.value = toNumber(product.tax_percent).toFixed(2);
+    }
+
+    function calculateRow(row) {
+      var qty = toNumber((row.querySelector(".po-line-qty") || {}).value);
+      var price = toNumber((row.querySelector(".po-line-price") || {}).value);
+      var discountPct = toNumber((row.querySelector(".po-line-discount") || {}).value);
+      var lineTotal = (qty * price) * (1 - (discountPct / 100));
+      if (lineTotal < 0) lineTotal = 0;
+      var lineTotalInput = row.querySelector(".po-line-total");
+      if (lineTotalInput) lineTotalInput.value = formatMoney(lineTotal);
+      return lineTotal;
+    }
+
+    function recalculateTotals() {
+      var subtotal = 0;
+      var totalTax = 0;
+      Array.from(editorTableBody.querySelectorAll("tr")).forEach(function (row) {
+        var lineTotal = calculateRow(row);
+        var taxPct = toNumber((row.querySelector(".po-line-tax") || {}).value);
+        subtotal += lineTotal;
+        totalTax += lineTotal * (taxPct / 100);
+      });
+      var grandTotal = subtotal + totalTax;
+      if (poSubtotalEl) poSubtotalEl.textContent = formatMoney(subtotal);
+      if (poTaxTotalEl) poTaxTotalEl.textContent = formatMoney(totalTax);
+      if (poGrandTotalEl) poGrandTotalEl.textContent = formatMoney(grandTotal);
+      return { subtotal: subtotal, tax: totalTax, grand: grandTotal };
+    }
+
+    function buildListRow(values) {
+      var row = document.createElement("tr");
+      row.dataset.warehouse = values.warehouse || "";
+      row.dataset.poDate = values.poDate || "";
+      row.innerHTML =
+        "<td><input type='text' class='po-cell-input' value='" + escapeHtml(values.poNo) + "' readonly></td>" +
+        "<td><input type='text' class='po-cell-input' value='" + escapeHtml(values.item) + "' readonly></td>" +
+        "<td><input type='text' class='po-cell-input' value='" + escapeHtml(values.qty) + "' readonly></td>" +
+        "<td><input type='text' class='po-cell-input' value='" + escapeHtml(values.supplierName) + "' readonly></td>" +
+        "<td><input type='text' class='po-cell-input' value='" + escapeHtml(values.unitPrice) + "' readonly></td>" +
+        "<td><input type='text' class='po-cell-input' value='" + escapeHtml(values.tax) + "' readonly></td>" +
+        "<td><input type='text' class='po-cell-input' value='" + escapeHtml(values.netTotal) + "' readonly></td>" +
+        "<td><span class='po-status-pill'>" + escapeHtml(values.status) + "</span></td>";
+      return row;
+    }
+
+    function parseDisplayDate(value) {
+      if (!value) return null;
+      if (value.indexOf("/") > -1) {
+        var parts = value.split("/");
+        if (parts.length !== 3) return null;
+        var d = parseInt(parts[0], 10);
+        var m = parseInt(parts[1], 10) - 1;
+        var y = parseInt(parts[2], 10);
+        return new Date(y, m, d);
+      }
+      if (value.indexOf("-") > -1) {
+        var iso = value.split("-");
+        if (iso.length !== 3) return null;
+        return new Date(parseInt(iso[0], 10), parseInt(iso[1], 10) - 1, parseInt(iso[2], 10));
+      }
+      return null;
+    }
+
+    function filterListTable() {
+      var poNoFilter = (listPoNo && listPoNo.value ? listPoNo.value : "").trim().toLowerCase();
+      var warehouseFilter = (listWarehouse && listWarehouse.value ? listWarehouse.value : "").trim().toLowerCase();
+      var supplierCode = (listSupplier && listSupplier.value ? listSupplier.value : "").trim();
+      var supplierObj = byCode(suppliers, supplierCode);
+      var supplierFilter = (supplierObj ? supplierObj.name : "").trim().toLowerCase();
+      var statusFilter = (listStatus && listStatus.value ? listStatus.value : "").trim().toLowerCase();
+      var fromDate = parseDisplayDate(listFromDate ? listFromDate.value : "");
+      var toDate = parseDisplayDate(listToDate ? listToDate.value : "");
+
+      Array.from(tableBody.querySelectorAll("tr")).forEach(function (row) {
+        var poNo = ((row.cells[0] && row.cells[0].querySelector("input")) ? row.cells[0].querySelector("input").value : "").toLowerCase();
+        var supplierName = ((row.cells[3] && row.cells[3].querySelector("input")) ? row.cells[3].querySelector("input").value : "").toLowerCase();
+        var rowStatus = ((row.cells[7] && row.cells[7].querySelector(".po-status-pill")) ? row.cells[7].querySelector(".po-status-pill").textContent : "").toLowerCase();
+        var rowWarehouse = (row.dataset.warehouse || "").toLowerCase();
+        var rowDate = parseDisplayDate(row.dataset.poDate || "");
+
+        var poMatch = !poNoFilter || poNo.indexOf(poNoFilter) > -1;
+        var warehouseMatch = !warehouseFilter || rowWarehouse === warehouseFilter;
+        var supplierMatch = !supplierFilter || supplierName === supplierFilter;
+        var statusMatch = !statusFilter || rowStatus === statusFilter;
+        var fromMatch = !fromDate || (rowDate && rowDate >= fromDate);
+        var toMatch = !toDate || (rowDate && rowDate <= toDate);
+
+        row.style.display = (poMatch && warehouseMatch && supplierMatch && statusMatch && fromMatch && toMatch) ? "" : "none";
+      });
+    }
+
+    function ensureSelectOption(selectEl, value, label) {
+      if (!selectEl || !value) return;
+      var exists = Array.from(selectEl.options).some(function (opt) { return opt.value === value; });
+      if (!exists) {
+        var opt = document.createElement("option");
+        opt.value = value;
+        opt.text = label || value;
+        selectEl.add(opt);
+      }
+      selectEl.value = value;
+    }
+
+    if (addWarehouseBtn) {
+      addWarehouseBtn.addEventListener("click", async function () {
+        var warehouseName = promptRequired("Enter warehouse name:", "");
+        if (!warehouseName) return;
+        var exists = Array.from(poWarehouse.options).some(function (opt) { return opt.value === warehouseName; });
+        if (exists) {
+          poWarehouse.value = warehouseName;
+          return;
+        }
+        try {
+          var warehouseResp = await postJson(apiUrls.addWarehouse, { name: warehouseName });
+          var safeName = warehouseResp.warehouse.name;
+          appendSelectOption(poWarehouse, safeName, safeName);
+          appendSelectOption(listWarehouse, safeName, safeName);
+          poWarehouse.value = safeName;
+        } catch (error) {
+          window.alert(error.message || "Unable to save warehouse.");
+        }
+      });
+    }
+
+    if (searchBtn) {
+      searchBtn.addEventListener("click", function () {
+        filterListTable();
+      });
+    }
+
+    if (addSupplierBtn) {
+      addSupplierBtn.addEventListener("click", async function () {
+        var supplierCode = promptRequired("Enter supplier code:", "SUP-" + String(suppliers.length + 1).padStart(3, "0"));
+        if (!supplierCode) return;
+        if (suppliers.some(function (item) { return item.code === supplierCode; })) {
+          poSupplierSelect.value = supplierCode;
+          setSupplierFields(supplierCode);
+          return;
+        }
+        var supplierName = promptRequired("Enter supplier name:", "");
+        if (!supplierName) return;
+        var contact = promptRequired("Enter contact person:", "") || "";
+        var address = promptRequired("Enter address:", "") || "";
+        var country = promptRequired("Enter country:", "India") || "India";
+        var currency = promptRequired("Enter currency:", "INR") || "INR";
+        var paymentTerms = promptRequired("Enter payment terms:", "Net 30") || "Net 30";
+        try {
+          var supplierResp = await postJson(apiUrls.addSupplier, {
+            code: supplierCode,
+            name: supplierName,
+            contact: contact,
+            address: address,
+            country: country,
+            currency: currency,
+            payment_terms: paymentTerms
+          });
+          var supplier = supplierResp.supplier;
+          suppliers.push(supplier);
+          appendSelectOption(poSupplierSelect, supplier.code, supplier.name);
+          appendSelectOption(listSupplier, supplier.code, supplier.name);
+          poSupplierSelect.value = supplier.code;
+          setSupplierFields(supplier.code);
+        } catch (error) {
+          window.alert(error.message || "Unable to save supplier.");
+        }
+      });
+    }
+
+    if (addProductBtn) {
+      addProductBtn.addEventListener("click", async function () {
+        await addOrSelectProduct(activeProductSelect);
+      });
+    }
+
+    async function addOrSelectProduct(targetSelect) {
+      var productName = promptRequired("Enter product name:", "");
+      if (!productName) {
+        if (targetSelect) targetSelect.value = "";
+        return;
+      }
+      var existingByName = products.find(function (item) {
+        return String(item.name || "").toLowerCase() === productName.toLowerCase();
+      });
+      if (existingByName) {
+        if (targetSelect) {
+          var existingRow = targetSelect.closest("tr");
+          targetSelect.value = existingByName.code;
+          updateLineFromProduct(existingRow);
+          calculateRow(existingRow);
+          recalculateTotals();
+        }
+        return;
+      }
+      var productCode = promptRequired("Enter product code (optional):", productCodeFromName(productName));
+      if (!productCode) productCode = productCodeFromName(productName);
+      if (products.some(function (item) { return item.code === productCode; })) {
+        productCode = productCodeFromName(productName);
+      }
+      var description = promptRequired("Enter description:", productName) || productName;
+      var unitPrice = toNumber(promptRequired("Enter unit price:", "0"));
+      var taxPercent = toNumber(promptRequired("Enter tax %:", "0"));
+      try {
+        var productResp = await postJson(apiUrls.addProduct, {
+          code: productCode,
+          name: productName,
+          description: description,
+          unit_price: unitPrice,
+          tax_percent: taxPercent
+        });
+        var newProduct = productResp.product;
+        products.push(newProduct);
+        refreshAllProductSelects();
+        if (targetSelect) {
+          var row = targetSelect.closest("tr");
+          targetSelect.value = newProduct.code;
+          updateLineFromProduct(row);
+          calculateRow(row);
+        }
+        recalculateTotals();
+      } catch (error) {
+        window.alert(error.message || "Unable to save product.");
+      }
+    }
+
+    function formatDateDisplay(isoDate) {
+      if (!isoDate || isoDate.indexOf("-") === -1) return "";
+      var parts = isoDate.split("-");
+      if (parts.length !== 3) return "";
+      return parts[2] + "/" + parts[1] + "/" + parts[0];
+    }
+
+    function showEditor(show) {
+      if (!listView || !editorView || !headingBar) return;
+      listView.hidden = !!show;
+      editorView.hidden = !show;
+      headingBar.hidden = !!show;
+    }
+
+    function clearEditorRows() {
+      editorTableBody.innerHTML = "";
+      editorTableBody.appendChild(buildEditorRow());
+      refreshEditorRowNumbers();
+      recalculateTotals();
+    }
+
+    function resetEditorForNewPo() {
+      poTranNo.value = nextPoNumber();
+      if (!poTranDate.value) {
+        poTranDate.value = new Date().toISOString().slice(0, 10);
+      }
+      poSupplierSelect.value = "";
+      poWarehouse.value = "";
+      poPaymentTerms.value = "";
+      poStatus.value = "Draft";
+      setSupplierFields("");
+      clearEditorRows();
+    }
+
+    function setSupplierFields(code) {
+      var supplier = byCode(suppliers, code);
+      poSupplierCode.value = supplier ? supplier.code : "";
+      poSupplierName.value = supplier ? supplier.name : "";
+      poContactPerson.value = supplier ? supplier.contact : "";
+      poSupplierAddress.value = supplier ? supplier.address : "";
+      poSupplierCountry.value = supplier ? supplier.country : "";
+      poCurrency.value = supplier ? supplier.currency : "";
+      if (supplier && poPaymentTerms && !poPaymentTerms.value) {
+        poPaymentTerms.value = supplier.payment_terms || "";
+      }
+    }
+
+    editorTableBody.addEventListener("click", function (event) {
+      var button = event.target.closest("button[data-editor-action]");
+      if (!button) return;
+      var row = button.closest("tr");
+      if (!row) return;
+      if (button.dataset.editorAction === "delete") {
+        if (editorTableBody.rows.length <= 1) return;
+        row.remove();
+      }
+      if (button.dataset.editorAction === "add") {
+        row.insertAdjacentElement("afterend", buildEditorRow());
+      }
+      refreshEditorRowNumbers();
+      recalculateTotals();
+    });
+
+    editorTableBody.addEventListener("change", async function (event) {
+      var row = event.target.closest("tr");
+      if (!row) return;
+      if (event.target.classList.contains("po-product-select")) {
+        activeProductSelect = event.target;
+        if (event.target.value === "__add_new__") {
+          await addOrSelectProduct(event.target);
+          return;
+        }
+        updateLineFromProduct(row);
+      }
+      calculateRow(row);
+      recalculateTotals();
+    });
+
+    editorTableBody.addEventListener("focusin", function (event) {
+      if (event.target.classList.contains("po-product-select")) {
+        activeProductSelect = event.target;
+      }
+    });
+
+    editorTableBody.addEventListener("input", function (event) {
+      var row = event.target.closest("tr");
+      if (!row) return;
+      if (
+        event.target.classList.contains("po-line-qty") ||
+        event.target.classList.contains("po-line-discount") ||
+        event.target.classList.contains("po-line-price") ||
+        event.target.classList.contains("po-line-tax")
+      ) {
+        calculateRow(row);
+        recalculateTotals();
+      }
+    });
+
+    poSupplierSelect.addEventListener("change", function () {
+      setSupplierFields(poSupplierSelect.value);
+    });
+
+    if (openEditorBtn) {
+      openEditorBtn.addEventListener("click", function () {
+        resetEditorForNewPo();
+        showEditor(true);
+      });
+    }
+
+    if (cancelEditorBtn) {
+      cancelEditorBtn.addEventListener("click", function () {
+        showEditor(false);
+      });
+    }
+
+    function resolveStatus(actionType) {
+      if (actionType === "approve") return "Approved";
+      if (actionType === "cancel_order") return "Cancelled";
+      if (actionType === "submit" && poStatus.value === "Draft") return "Draft";
+      return poStatus.value || "Draft";
+    }
+
+    actionButtons.forEach(function (btn) {
+      btn.addEventListener("click", async function () {
+        var actionType = btn.dataset.poAction || "save";
+        if (!poTranNo.value.trim()) poTranNo.value = nextPoNumber();
+        var supplier = byCode(suppliers, poSupplierSelect.value);
+        var totals = recalculateTotals();
+        var statusValue = resolveStatus(actionType);
+        poStatus.value = statusValue;
+        var poNo = poTranNo.value;
+        var newRows = [];
+        var payloadItems = [];
+
+        Array.from(tableBody.querySelectorAll("tr")).forEach(function (existingRow) {
+          var poInput = existingRow.cells[0] ? existingRow.cells[0].querySelector("input") : null;
+          var existingPoNo = (poInput && poInput.value ? poInput.value : "").trim();
+          if (existingPoNo === poNo) {
+            existingRow.remove();
+          }
+        });
+
+        Array.from(editorTableBody.querySelectorAll("tr")).forEach(function (row) {
+          var productSelect = row.querySelector(".po-product-select");
+          var product = byCode(products, productSelect ? productSelect.value : "");
+          if (!product) return;
+          var qty = toNumber((row.querySelector(".po-line-qty") || {}).value);
+          var price = toNumber((row.querySelector(".po-line-price") || {}).value);
+          var discount = toNumber((row.querySelector(".po-line-discount") || {}).value);
+          var tax = toNumber((row.querySelector(".po-line-tax") || {}).value);
+          var description = (row.querySelector(".po-line-description") || {}).value || "";
+          var lineTotal = toNumber((row.querySelector(".po-line-total") || {}).value);
+          var lineNet = lineTotal + (lineTotal * (tax / 100));
+          payloadItems.push({
+            product_code: product.code || "",
+            product_name: product.name || "",
+            description: description,
+            qty: qty,
+            unit_price: price,
+            discount_percent: discount,
+            tax_percent: tax,
+            line_total: lineTotal,
+            net_total: lineNet
+          });
+          newRows.push(buildListRow({
+            poNo: poTranNo.value,
+            item: product.name,
+            qty: qty,
+            supplierName: supplier ? supplier.name : "",
+            unitPrice: formatMoney(price),
+            tax: tax.toFixed(2),
+            netTotal: formatMoney(lineNet),
+            status: statusValue,
+            warehouse: poWarehouse.value || "",
+            poDate: poTranDate.value || ""
+          }));
+        });
+
+        if (!newRows.length) {
+          newRows.push(buildListRow({
+            poNo: poTranNo.value,
+            item: "",
+            qty: "",
+            supplierName: supplier ? supplier.name : "",
+            unitPrice: "",
+            tax: "",
+            netTotal: formatMoney(totals.grand),
+            status: statusValue,
+            warehouse: poWarehouse.value || "",
+            poDate: poTranDate.value || ""
+          }));
+        }
+
+        newRows.forEach(function (newRow) {
+          tableBody.appendChild(newRow);
+        });
+
+        try {
+          await postJson(apiUrls.saveOrder, {
+            po_no: poNo,
+            po_date: poTranDate.value || "",
+            supplier_code: poSupplierCode.value || "",
+            supplier_name: supplier ? supplier.name : "",
+            warehouse: poWarehouse.value || "",
+            payment_terms: poPaymentTerms.value || "",
+            currency: poCurrency.value || "",
+            status: statusValue,
+            grand_total: totals.grand,
+            items: payloadItems
+          });
+        } catch (error) {
+          window.alert(error.message || "Unable to save purchase order.");
+        }
+
+        if (listPoNo) listPoNo.value = poTranNo.value;
+        ensureSelectOption(listSupplier, poSupplierSelect.value, supplier ? supplier.name : poSupplierSelect.value);
+        ensureSelectOption(listWarehouse, poWarehouse.value, poWarehouse.value);
+        ensureSelectOption(listStatus, statusValue, statusValue);
+        var dateText = formatDateDisplay(poTranDate.value);
+        if (listFromDate && dateText) listFromDate.value = dateText;
+        if (listToDate && dateText) listToDate.value = dateText;
+        showEditor(false);
+      });
+    });
+
+    refreshEditorRowNumbers();
+    setSupplierFields(poSupplierSelect.value);
+    Array.from(editorTableBody.querySelectorAll("tr")).forEach(function (row) {
+      updateLineFromProduct(row);
+      calculateRow(row);
+    });
+    recalculateTotals();
+  })();
+</script>
+{% endblock %}

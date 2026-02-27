@@ -1,0 +1,51 @@
+{% extends "base_layout.html" %}
+
+{% block page_heading %}{% endblock %}
+
+{% block content %}
+<section class="erp-topbar">
+  <div class="erp-topbar-right">
+    <button class="topbar-icon-btn" id="quickLinksBtn" type="button" title="Quick Links">&#9638;</button>
+    <a class="topbar-icon-btn active" href="{% url 'settings' %}" title="Settings">&#9881;</a>
+    <div class="profile-wrap">
+      <button class="topbar-icon-btn" id="profileMenuBtn" type="button" title="Profile">&#128100;</button>
+      <div class="profile-popup" id="profilePopup">
+        <a href="/?module=profile">&#128100; Profile</a>
+        <a href="/?module=logout">&#10162; Log Out</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="quick-links-popup" id="quickLinksPopup">
+  <div class="quick-links-head">QUICK LINKS</div>
+  <div class="quick-links-grid">
+    <a href="/?module=customer">Customer</a>
+    <a href="/?module=product">Product</a>
+    <a href="/?module=purchase-invoice">Purchase Invoice</a>
+    <a href="/?module=sales-order">Sales Order</a>
+    <a href="/?module=invoice">Invoice</a>
+  </div>
+</div>
+
+<section class="dashboard-headline">Manage Settings</section>
+
+<section class="settings-grid">
+  <article class="setting-card"><div class="inner"><h3>&#9881;<br>Organization</h3><p>view organization settings</p><a href="/settings/?section=organization">VIEW</a></div></article>
+  <article class="setting-card"><div class="inner"><h3>&#9881;<br>E-Commerce</h3><p>view ecommerce settings</p><a href="/settings/?section=ecommerce">VIEW</a></div></article>
+  <article class="setting-card"><div class="inner"><h3>&#9881;<br>Roles</h3><p>view roles settings</p><a href="/settings/?section=roles">VIEW</a></div></article>
+  <article class="setting-card"><div class="inner"><h3>&#9881;<br>Audit Log</h3><p>view auditlog settings</p><a href="/settings/?section=auditlog">VIEW</a></div></article>
+
+  <article class="setting-card"><div class="inner"><h3>&#9881;<br>General Settings</h3><p>view general settings</p><a href="/settings/?section=general">VIEW</a></div></article>
+  <article class="setting-card"><div class="inner"><h3>&#9881;<br>Import/Export</h3><p>view import/export</p><a href="/settings/?section=import-export">VIEW</a></div></article>
+  <article class="setting-card"><div class="inner"><h3>&#9881;<br>Email Settings</h3><p>view email settings</p><a href="/settings/?section=email">VIEW</a></div></article>
+  <article class="setting-card"><div class="inner"><h3>&#9881;<br>Financial Settings</h3><p>view financial settings</p><a href="/settings/?section=financial">VIEW</a></div></article>
+
+  <article class="setting-card"><div class="inner"><h3>&#9881;<br>Bulk Update</h3><p>view bulk update</p><a href="/settings/?section=bulk-update">VIEW</a></div></article>
+  <article class="setting-card"><div class="inner"><h3>&#9881;<br>E-Procurement</h3><p>view eproc settings</p><a href="/settings/?section=eprocurement">VIEW</a></div></article>
+  <article class="setting-card"><div class="inner"><h3>&#9881;<br>Document Settings</h3><p>view doc settings</p><a href="/settings/?section=document">VIEW</a></div></article>
+  <article class="setting-card"><div class="inner"><h3>&#9881;<br>Third Party Apps</h3><p>view third party app</p><a href="/settings/?section=third-party">VIEW</a></div></article>
+
+  <article class="setting-card"><div class="inner"><h3>&#9881;<br>Payroll</h3><p>view payroll settings</p><a href="/settings/?section=payroll">VIEW</a></div></article>
+</section>
+{% endblock %}

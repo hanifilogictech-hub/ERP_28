@@ -1,0 +1,245 @@
+{% extends "base_layout.html" %}
+
+{% block page_heading %}
+<div class="po-heading-bar">
+  <h1>Add/Edit Stock Take</h1>
+</div>
+{% endblock %}
+
+{% block content %}
+<section class="po-editor-panel stock-request-form-panel stock-take-form-panel">
+  <div class="po-editor-head stock-form-head stocktake-form-head">
+    <div class="po-editor-field">
+      <label for="stk_date">Stock Take Date</label>
+      <input id="stk_date" type="date" value="{{ stk_today }}">
+    </div>
+    <div class="po-editor-field">
+      <label for="stk_location">Location Code</label>
+      <select id="stk_location">
+        {% for location in stk_locations %}
+        <option value="{{ location }}" {% if location == "HQ" %}selected{% endif %}>{{ location }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="po-editor-field stocktake-remarks">
+      <label for="stk_remarks">Remarks</label>
+      <input id="stk_remarks" type="text" placeholder="Remarks">
+    </div>
+  </div>
+
+  <div class="stock-add-row">
+    <button type="button" class="po-editor-save stock-add-btn" id="stk-load-products-btn">Load Products</button>
+  </div>
+
+  <table class="po-editor-table stock-product-table stocktake-product-table">
+    <thead>
+      <tr>
+        <th>SlNo</th>
+        <th>Product</th>
+        <th>System Qty</th>
+        <th>Physical Qty</th>
+        <th>Variance</th>
+      </tr>
+    </thead>
+    <tbody id="stk-product-tbody">
+      <tr>
+        <td colspan="5" class="empty-cell">Click "Load Products" to fetch items from inventory.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="po-editor-buttons">
+    <a href="{% url 'stock_take' %}" class="po-editor-cancel stock-link-btn">Back</a>
+    <button type="button" class="po-editor-cancel" id="stk-save-btn">Save</button>
+    <button type="button" class="po-editor-save" id="stk-finalize-btn">Finalize</button>
+    <button type="button" class="po-editor-cancel" id="stk-cancel-btn">Cancel</button>
+  </div>
+</section>
+
+{{ stk_inventory_rows|json_script:"stk-inventory-rows-data" }}
+{{ stk_products|json_script:"stk-products-data" }}
+<script>
+  (function () {
+    var loadBtn = document.getElementById("stk-load-products-btn");
+    var tbody = document.getElementById("stk-product-tbody");
+    var locationEl = document.getElementById("stk_location");
+    if (!loadBtn || !tbody || !locationEl) return;
+
+    var inventoryRows = [];
+    var fallbackProducts = [];
+    try {
+      inventoryRows = JSON.parse((document.getElementById("stk-inventory-rows-data") || {}).textContent || "[]");
+    } catch (_error) {
+      inventoryRows = [];
+    }
+    try {
+      fallbackProducts = JSON.parse((document.getElementById("stk-products-data") || {}).textContent || "[]");
+    } catch (_error) {
+      fallbackProducts = [];
+    }
+
+    function toNumber(v) {
+      var n = parseFloat(v);
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    function renumber() {
+      Array.from(tbody.querySelectorAll("tr")).forEach(function (row, idx) {
+        if (row.cells[0]) row.cells[0].textContent = String(idx + 1);
+      });
+    }
+
+    function recalcRow(row) {
+      var systemQty = toNumber((row.querySelector(".stk-system") || {}).textContent);
+      var physicalQty = toNumber((row.querySelector(".stk-physical") || {}).value);
+      var variance = physicalQty - systemQty;
+      var varianceEl = row.querySelector(".stk-variance");
+      if (varianceEl) varianceEl.value = String(variance);
+    }
+
+    function renderEmpty(message) {
+      tbody.innerHTML = "<tr><td colspan='5' class='empty-cell'>" + message + "</td></tr>";
+    }
+
+    function buildRow(product) {
+      var tr = document.createElement("tr");
+      var variance = product.physical_qty - product.system_qty;
+      tr.innerHTML =
+        "<td></td>" +
+        "<td class='stk-product' data-product-code='" + String(product.product_code || "").replace(/'/g, "&#39;") + "'>" + String(product.product_name || "").replace(/</g, "&lt;").replace(/>/g, "&gt;") + "</td>" +
+        "<td class='stk-system'>" + product.system_qty + "</td>" +
+        "<td><input type='number' class='stk-physical' min='0' step='1' value='" + product.physical_qty + "'></td>" +
+        "<td><input type='number' class='stk-variance' value='" + variance + "' readonly></td>";
+      return tr;
+    }
+
+    function loadRowsForLocation() {
+      var location = (locationEl || {}).value || "";
+      var rows = inventoryRows.filter(function (r) {
+        return String((r || {}).location || "") === location;
+      }).map(function (r) {
+        var qty = toNumber((r || {}).stock_qty);
+        return {
+          product_code: String((r || {}).product_code || ""),
+          product_name: String((r || {}).product_name || ""),
+          system_qty: qty,
+          physical_qty: qty
+        };
+      });
+
+      if (!rows.length) {
+        rows = fallbackProducts.map(function (p) {
+          return {
+            product_code: String((p || {}).code || ""),
+            product_name: String((p || {}).name || ""),
+            system_qty: 0,
+            physical_qty: 0
+          };
+        });
+      }
+      return rows;
+    }
+
+    loadBtn.addEventListener("click", function () {
+      var rows = loadRowsForLocation();
+      if (!rows.length) {
+        renderEmpty("No products found for selected location.");
+        return;
+      }
+      tbody.innerHTML = "";
+      rows.forEach(function (product) {
+        tbody.appendChild(buildRow(product));
+      });
+      renumber();
+    });
+
+    tbody.addEventListener("input", function (event) {
+      if (event.target.classList.contains("stk-physical")) {
+        var row = event.target.closest("tr");
+        if (row) recalcRow(row);
+      }
+    });
+
+    function collectItems() {
+      return Array.from(tbody.querySelectorAll("tr")).map(function (row) {
+        var productCell = row.querySelector(".stk-product");
+        if (!productCell) return null;
+        var productCode = productCell.getAttribute("data-product-code") || "";
+        var productName = productCell.textContent.trim();
+        return {
+          product_code: productCode,
+          product_name: productName,
+          system_qty: toNumber((row.querySelector(".stk-system") || {}).textContent),
+          physical_qty: toNumber((row.querySelector(".stk-physical") || {}).value)
+        };
+      }).filter(function (item) {
+        return item && (item.product_code || item.product_name);
+      });
+    }
+
+    function postJson(url, payload) {
+      return fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload || {})
+      }).then(function (response) {
+        return response.json().catch(function () { return {}; }).then(function (data) {
+          if (!response.ok || data.ok === false) {
+            throw new Error(data.error || "Request failed.");
+          }
+          return data;
+        });
+      });
+    }
+
+    var currentStockTakeNo = "";
+    function saveStockTake() {
+      var items = collectItems();
+      var payload = {
+        stock_take_no: currentStockTakeNo,
+        stock_take_date: (document.getElementById("stk_date") || {}).value || "",
+        location: (locationEl || {}).value || "",
+        remarks: (document.getElementById("stk_remarks") || {}).value || "",
+        items: items
+      };
+      return postJson("{% url 'stk_save_api' %}", payload).then(function (data) {
+        currentStockTakeNo = data.stock_take_no || currentStockTakeNo;
+        return data;
+      });
+    }
+
+    var saveBtn = document.getElementById("stk-save-btn");
+    var finalizeBtn = document.getElementById("stk-finalize-btn");
+    var cancelBtn = document.getElementById("stk-cancel-btn");
+
+    if (saveBtn) {
+      saveBtn.addEventListener("click", function () {
+        saveStockTake().then(function (data) {
+          window.alert("Saved: " + data.stock_take_no + " (" + data.status + ")");
+        }).catch(function (error) {
+          window.alert(error.message || "Unable to save stock take.");
+        });
+      });
+    }
+
+    if (finalizeBtn) {
+      finalizeBtn.addEventListener("click", function () {
+        saveStockTake().then(function (saveData) {
+          return postJson("{% url 'stk_finalize_api' %}", { stock_take_no: saveData.stock_take_no });
+        }).then(function (finalData) {
+          window.alert("Finalized: " + finalData.stock_take_no + " (" + finalData.status + ")");
+          window.location.href = "{% url 'stock_take' %}";
+        }).catch(function (error) {
+          window.alert(error.message || "Unable to finalize stock take.");
+        });
+      });
+    }
+
+    if (cancelBtn) {
+      cancelBtn.addEventListener("click", function () {
+        window.location.href = "{% url 'stock_take' %}";
+      });
+    }
+  })();
+</script>
+{% endblock %}
