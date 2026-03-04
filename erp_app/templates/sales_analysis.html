@@ -4,104 +4,115 @@
 {% block content %}
 
 <div class="analysis-container">
+
     <div class="top-buttons">
-        <button class="btn-yellow">Update sales</button>
-        <button class="btn-yellow">Print</button>
-        <button class="btn-yellow">Search</button>
+        <button type="submit" class="btn-yellow">Search</button>
+        <button type="button" onclick="window.print()" class="btn-yellow">Print</button>
+        <button type="button" class="btn-yellow" style="background:#dc3545; color:white;">🗑️ Delete</button>
     </div>
 
-    <div class="filter-card">
-
+    <!-- FILTER SECTION -->
+    <form method="GET">
         <div class="form-row">
+
             <div class="form-group">
                 <label>Location</label>
-                <select>
-                    <option>Select</option>
+                <select name="location">
+                    <option value="">Select</option>
                 </select>
             </div>
 
             <div class="form-group">
                 <label>From Date</label>
-                <input type="date">
+                <input type="date" name="from_date">
             </div>
 
             <div class="form-group">
                 <label>To Date</label>
-                <input type="date">
+                <input type="date" name="to_date">
             </div>
 
             <div class="form-group">
-                <label>product code</label>
-                <input type="text" placeholder="Enter product code">
+                <label>Invoice No</label>
+                <input type="text" name="invoice" placeholder="Enter invoice number">
             </div>
 
             <div class="form-group">
-                <label>product name</label>
-                <input type="text" placeholder="Enter product name">
+                <label>Customer Name</label>
+                <input type="text" name="customer" placeholder="Enter customer name">
             </div>
+
         </div>
 
         <div class="form-row">
+
             <div class="form-group">
-                <label>Department</label>
-                <select>
-                    <option>Select Department</option>
+                <label>Item name</label>
+                <input type="text" name="product" placeholder="Enter Item name">
+            </div>
+
+            <div class="form-group">
+                <label>Salesman</label>
+                <select name="salesman">
+                    <option value="">Select Salesman</option>
                 </select>
             </div>
 
             <div class="form-group">
-                <label>Category</label>
-                <select>
-                    <option>Select Category</option>
+                <label>Status</label>
+                <select name="status">
+                    <option value="">All</option>
+                    <option value="Paid">Paid</option>
+                    <option value="Due">Due</option>
                 </select>
             </div>
 
-            <div class="form-group">
-                <label>sub category
-                </label>
-                <select>
-                    <option>Select sub Category</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label>Supplier</label>
-                <select>
-                    <option>Select Supplier</option>
-                </select>
-            </div>
-          <div class="form-group">
-                <label>supply by purchase</label>
-                <select>
-                    <option>Select </option>
-                </select>
-            </div>
-            
         </div>
+    </form>
 
-    </div>
+    <!-- TABLE SECTION -->
 
-    <div class="table-card">
-        <table>
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>product code</th>
-                    <th>product name</th>
-                    <th>department</th>
-                    <th>category</th>
-                    <th>sub category</th>
-                    <th>Supplier</th>
-                    <th>supply by purchase</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td colspan="9">No Data Found</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
+    <table>
+        <thead>
+            <tr>
+                <th><input type="checkbox"></th>
+                <th>Location</th>
+                <th>Date</th>
+                <th>Invoice No</th>
+                <th>Customer</th>
+                <th>Item</th>
+                <th>Quantity</th>
+                <th>Total Amount</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            {% for sale in sales_data %}
+            <tr>
+                <td><input type="checkbox"></td>
+                <td>{{ sale.location }}</td>
+                <td>{{ sale.date }}</td>
+                <td>{{ sale.invoice_no }}</td>
+                <td>{{ sale.customer }}</td>
+                <td>{{ sale.product }}</td>
+                <td>{{ sale.quantity }}</td>
+                <td>{{ sale.total_amount }}</td>
+                <td>
+                    {% if sale.status == "Paid" %}
+                        <span style="color:green;">Paid</span>
+                    {% else %}
+                        <span style="color:red;">Due</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="9">No Data Found</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 
 </div>
 <style>
