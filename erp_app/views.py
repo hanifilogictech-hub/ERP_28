@@ -13,7 +13,21 @@ from django.views.decorators.http import require_http_methods
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
+from .models import SalesQuotation, SalesQuotationItem
+from .models import SalesOrder, SalesOrderItem
+from .models import Delivery
 
+from django.db.models import Sum, Q
+from .models import Inventory, GoodsReceiptItem, SalesOrderItem, Product, SupplierMaster
+
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import styles
+from reportlab.platypus import Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+import io
 
 from .db import init_db
 from .models import (
@@ -418,45 +432,251 @@ def sales_view(request):
 
 
 def sales_quotation_view(request):
+    
+    status = request.GET.get("status")
+    customer = request.GET.get("customer")
+
+    quotations = SalesQuotation.objects.all().order_by("-id")
+
+    if status == "approved":
+        quotations = quotations.filter(approved=True)
+
+    elif status == "unapproved":
+        quotations = quotations.filter(approved=False)
+        
+    # Filter by customer (partial match)
+    if customer:
+        quotations = quotations.filter(customer_name__icontains=customer)
+
     return render_page(
-        request, 
+        request,
         "sales_quotation.html",
         "Sales Quotation",
         "sales_quotation",
         inventory_open=True,
         sales_open=True,
+        extra={
+            "quotations": quotations,
+            "current_status": status
+        }
     )
 
-def unapproved_orders_view(request):
-    return render_page(
-        request,
-        "unapproved_orders.html",
-        "Unapproved Orders",
-        "unapproved_orders",
-        inventory_open=True,
-        sales_open=True,    
-    )    
 
-def sales_orders_view(request):
-    return render_page(
-        request,
-        "sales_orders.html",
-        "Sales Orders",
-        "sales_orders",
-        inventory_open=True,
-        sales_open=True,
-    )
+
+def salesquotation_print(request):
+    
+    customer = request.GET.get("customer")
+    status = request.GET.get("status")
+
+    quotations = SalesQuotation.objects.all()
+
+    if customer:
+        quotations = quotations.filter(customer_name__icontains=customer)
+
+    if status:
+        if status == "approved":
+            quotations = quotations.filter(approved=True)
+        elif status == "unapproved":
+            quotations = quotations.filter(approved=False)
+
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4)
+
+    elements = []
+    
+    styles = getSampleStyleSheet()
+
+    heading_style = styles["Heading1"]
+    heading = Paragraph("Sales Quotation", heading_style)
+
+    elements.append(heading)
+    elements.append(Spacer(1, 0.3 * inch))
+
+    data = [[ "Customer", "Approved", "Net Total"]]
+
+    for q in quotations:
+        data.append([
+            q.customer_name,
+            "Approved" if q.approved else "Unapproved",
+            str(q.total_amount)
+        ])
+
+    table = Table(data)
+
+    table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+        ("ALIGN", (3, 1), (3, -1), "RIGHT"),
+    ]))
+
+    elements.append(table)
+    doc.build(elements)
+
+    pdf = buffer.getvalue()
+    buffer.close()
+
+    response = HttpResponse(pdf, content_type="application/pdf")
+    response["Content-Disposition"] = "inline; filename=sales_quotations.pdf"
+
+    return response
+
 
 def delivery_view(request):
+    
+    if request.method == "POST":
+
+        action_type = request.POST.get("action_type")
+        select_all = request.POST.get("select_all")
+        selected_ids = request.POST.getlist("selected_ids")
+
+        if select_all == "yes":
+            deliveries = Delivery.objects.all()
+        else:
+            deliveries = Delivery.objects.filter(id__in=selected_ids)
+
+        if request.method == "POST":
+    
+            action_type = request.POST.get("action_type")
+            selected_ids = request.POST.getlist("selected_ids")
+
+            if action_type == "delete":
+
+                if selected_ids:
+                    Delivery.objects.filter(id__in=selected_ids).delete()
+                else:
+                    Delivery.objects.all().delete()
+
+                return redirect("delivery")
+
+        # PRINT
+        elif action_type == "print":
+            for d in deliveries:
+                print(d.tran_no)  # later connect to PDF
+
+        return redirect("delivery")
+
+    deliveries = Delivery.objects.all().order_by("-id")
+
     return render_page(
         request,
         "delivery.html",
-        "Delivery",
+        "Delivery Management",
         "delivery",
-        inventory_open=True,
-        sales_open=True,
+        extra={"deliveries": deliveries}
     )
+    
+def delivery_print_view(request):
+    
+    ids = request.GET.get("ids")
 
+    if ids:
+        id_list = ids.split(",")
+        deliveries = Delivery.objects.filter(id__in=id_list)
+    else:
+        deliveries = Delivery.objects.all()
+
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4)
+
+    elements = []
+    styles = getSampleStyleSheet()
+
+    title = Paragraph("<b>Sales Delivery Report</b>", styles['Title'])
+    elements.append(title)
+    elements.append(Spacer(1, 0.3 * inch))
+
+    # Table Data
+    data = [
+        ["Tran No", "Date", "Customer", "Status", "Net Total"]
+    ]
+
+    for d in deliveries:
+        data.append([
+            d.tran_no,
+            str(d.tran_date),
+            d.customer,
+            d.status,
+            str(d.net_total)
+        ])
+
+    table = Table(data, repeatRows=1)
+
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.grey),
+        ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
+        ('GRID', (0,0), (-1,-1), 1, colors.black),
+        ('ALIGN', (4,1), (-1,-1), 'RIGHT'),
+    ]))
+
+    elements.append(table)
+
+    doc.build(elements)
+
+    buffer.seek(0)
+
+    return HttpResponse(
+        buffer,
+        content_type='application/pdf',
+        headers={'Content-Disposition': 'attachment; filename="delivery_report.pdf"'}
+    )
+    
+    
+def delivery_new_view(request):
+    
+    if request.method == "POST":
+
+        tran_date = request.POST.get("tran_date")
+        if not tran_date:
+            tran_date = datetime.today().strftime("%Y-%m-%d")
+
+        # Simple auto number
+        count = Delivery.objects.count() + 1
+        tran_no = f"DO-{count:04d}"
+
+        delivery = Delivery.objects.create(
+            tran_no=tran_no,
+            tran_date=tran_date,
+            customer=request.POST.get("customer_name"),
+            sub_total=0,
+            tax=0,
+            net_total=0,
+        )
+
+        product_names = request.POST.getlist("product_name[]")
+        qtys = request.POST.getlist("qty[]")
+        prices = request.POST.getlist("price[]")
+
+        sub_total = 0
+
+        for i in range(len(product_names)):
+            if product_names[i]:
+
+                qty = float(qtys[i] or 0)
+                price = float(prices[i] or 0)
+                total = qty * price
+
+                sub_total += total
+
+                DeliveryItem.objects.create(
+                    delivery=delivery,
+                    product_name=product_names[i],
+                    qty=qty,
+                    price=price,
+                    total=total
+                )
+
+        delivery.sub_total = sub_total
+        delivery.net_total = sub_total
+        delivery.save()
+
+        return redirect("delivery")
+
+    return render_page(
+        request,
+        "delivery_new.html",
+        "Delivery - New",
+        "delivery"
+    )
 def sales_return_view(request):
     return render_page(
         request,
@@ -478,6 +698,51 @@ def invoice_view(request):
     )  
 
 def salesquotation_new_view(request):
+    
+    if request.method == "POST":
+        tran_no = request.POST.get("tran_no")
+        tran_date = request.POST.get("tran_date")
+        customer_name = request.POST.get("customer_name")
+        remarks = request.POST.get("remarks")
+
+        # Get approved status from button
+        status = request.POST.get("status")
+        is_approved = True if status == "approved" else False
+
+        # Create quotation
+        quotation = SalesQuotation.objects.create(
+            tran_no=tran_no,
+            tran_date=tran_date,
+            customer_name=customer_name,
+            remarks=remarks,
+            approved=is_approved,
+        )
+
+        product_codes = request.POST.getlist("product_code[]")
+        product_names = request.POST.getlist("product_name[]")
+        qtys = request.POST.getlist("qty[]")
+        prices = request.POST.getlist("price[]")
+        totals = request.POST.getlist("total[]")
+
+        total_amount = 0
+
+        for i in range(len(product_codes)):
+            if product_codes[i]:  # avoid empty row
+                SalesQuotationItem.objects.create(
+                    quotation=quotation,
+                    product_code=product_codes[i],
+                    product_name=product_names[i],
+                    qty=float(qtys[i] or 0),
+                    price=float(prices[i] or 0),
+                    total=float(totals[i] or 0),
+                )
+                total_amount += float(totals[i] or 0)
+
+        quotation.total_amount = total_amount
+        quotation.save()
+
+        return redirect("sales_quotation")
+
     return render_page(
         request,
         "salesquotation_new.html",
@@ -485,15 +750,286 @@ def salesquotation_new_view(request):
         "sales_quotation",
         inventory_open=True,
         sales_open=True,
-    )  
+    )
+
+def salesquotation_new_view(request):
+    
+    if request.method == "POST":
+        tran_no = request.POST.get("tran_no")
+        tran_date = request.POST.get("tran_date")
+        customer_name = request.POST.get("customer_name")
+        remarks = request.POST.get("remarks")
+
+        # Get approved status from button
+        status = request.POST.get("status")
+        is_approved = True if status == "approved" else False
+
+        # Create quotation
+        quotation = SalesQuotation.objects.create(
+            tran_no=tran_no,
+            tran_date=tran_date,
+            customer_name=customer_name,
+            remarks=remarks,
+            approved=is_approved,
+        )
+
+        product_codes = request.POST.getlist("product_code[]")
+        product_names = request.POST.getlist("product_name[]")
+        qtys = request.POST.getlist("qty[]")
+        prices = request.POST.getlist("price[]")
+        totals = request.POST.getlist("total[]")
+
+        total_amount = 0
+
+        for i in range(len(product_codes)):
+            if product_codes[i]:  # avoid empty row
+                SalesQuotationItem.objects.create(
+                    quotation=quotation,
+                    product_code=product_codes[i],
+                    product_name=product_names[i],
+                    qty=float(qtys[i] or 0),
+                    price=float(prices[i] or 0),
+                    total=float(totals[i] or 0),
+                )
+                total_amount += float(totals[i] or 0)
+
+        quotation.total_amount = total_amount
+        quotation.save()
+
+        return redirect("sales_quotation")
+
+    return render_page(
+        request,
+        "salesquotation_new.html",
+        "Add/Edit Sales Quotation",
+        "sales_quotation",
+        inventory_open=True,
+        sales_open=True,
+    )
+
+def salesquotation_print(request):
+    
+    customer = request.GET.get("customer")
+    status = request.GET.get("status")
+
+    quotations = SalesQuotation.objects.all()
+
+    if customer:
+        quotations = quotations.filter(customer_name__icontains=customer)
+
+    if status:
+        if status == "approved":
+            quotations = quotations.filter(approved=True)
+        elif status == "unapproved":
+            quotations = quotations.filter(approved=False)
+
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4)
+
+    elements = []
+    
+    styles = getSampleStyleSheet()
+
+    heading_style = styles["Heading1"]
+    heading = Paragraph("Sales Quotation", heading_style)
+
+    elements.append(heading)
+    elements.append(Spacer(1, 0.3 * inch))
+
+    data = [[ "Customer", "Approved", "Net Total"]]
+
+    for q in quotations:
+        data.append([
+            q.customer_name,
+            "Approved" if q.approved else "Unapproved",
+            str(q.total_amount)
+        ])
+
+    table = Table(data)
+
+    table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+        ("ALIGN", (3, 1), (3, -1), "RIGHT"),
+    ]))
+
+    elements.append(table)
+    doc.build(elements)
+
+    pdf = buffer.getvalue()
+    buffer.close()
+
+    response = HttpResponse(pdf, content_type="application/pdf")
+    response["Content-Disposition"] = "inline; filename=sales_quotations.pdf"
+
+    return response
+
+def salesquotation_delete(request):
+    
+    if request.method == "POST":
+        ids = request.POST.getlist("selected_ids")
+
+        if ids:
+            SalesQuotation.objects.filter(id__in=ids).delete()
+
+    return redirect("sales_quotation")  
+
+def sales_orders_view(request):
+    
+   
+    customer = request.GET.get("customer")
+    printed = request.GET.get("printed")   # NEW
+
+    orders = SalesOrder.objects.all().order_by("-id")
+
+   
+
+    if customer:
+        orders = orders.filter(customer__icontains=customer)
+
+    # NEW PRINT FILTER
+    if printed == "true":
+        orders = orders.filter(printed=True)
+    elif printed == "false":
+        orders = orders.filter(printed=False)
+
+    return render_page(
+        request,
+        "sales_orders.html",
+        "Sales Orders",
+        "sales_orders",
+        inventory_open=True,
+        sales_open=True,
+        extra={
+            "orders": orders,
+            "current_customer": customer,
+            "current_printed": printed
+        }
+    )
+    
+
+from datetime import datetime
+
 
 def salesorders_new_view(request):
+    
+    if request.method == "POST":
+
+        # 1️⃣ Get date
+        tran_date = request.POST.get("tran_date")
+
+        if not tran_date:
+            tran_date = datetime.today().strftime("%Y-%m-%d")
+
+        # Convert string to datetime object
+        date_obj = datetime.strptime(tran_date, "%Y-%m-%d")
+
+        # 2️⃣ Generate Auto Order Number
+        month_year = date_obj.strftime("%m%y")
+        prefix = f"SO-{month_year}-"
+
+        count = SalesOrder.objects.filter(
+            order_date__month=date_obj.month,
+            order_date__year=date_obj.year
+        ).count() + 1
+
+        order_number = f"{prefix}{count:02d}"
+
+        # 3️⃣ Create Order (CHANGED HERE)
+        order = SalesOrder.objects.create(
+            order_no=order_number,   # ✅ AUTO GENERATED
+            order_date=tran_date,
+            invoice_no="",
+            customer=request.POST.get("customer_name"),
+            amount=0,
+            paid_amount=0,
+            salesman=request.POST.get("salesman_code") or "Salesman 1"
+        )
+
+        product_codes = request.POST.getlist("product_code[]")
+        product_names = request.POST.getlist("product_name[]")
+        qtys = request.POST.getlist("qty[]")
+        prices = request.POST.getlist("price[]")
+
+        total_amount = 0
+
+        for i in range(len(product_codes)):
+            if product_codes[i]:
+
+                qty = float(qtys[i] or 0)
+                price = float(prices[i] or 0)
+                amount = qty * price
+                total_amount += amount
+
+                SalesOrderItem.objects.create(
+                    sales_order=order,
+                    product_id=1,
+                    qty=qty,
+                    amount=amount
+                )
+
+        order.amount = total_amount
+        order.save()
+
+        return redirect("sales_orders")
+
     return render_page(
         request,
         "salesorders_new.html",
-        "Sales Order - New",     
-        "sales_orders"           
+        "Sales Order - New",
+        "sales_orders"
     )
+    
+def sales_orders_print(request):
+    
+    selected_ids = request.POST.getlist("selected_ids")
+
+    # If rows selected → filter
+    if selected_ids:
+        orders = SalesOrder.objects.filter(id__in=selected_ids)
+    else:
+        # If none selected → print all
+        orders = SalesOrder.objects.all()
+
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = 'inline; filename="sales_orders.pdf"'
+
+    doc = SimpleDocTemplate(response)
+    elements = []
+
+    data = [["Order No", "Date", "Customer", "Status", "Amount"]]
+
+    for o in orders:
+        data.append([
+            o.order_no,
+            str(o.order_date),
+            o.customer,
+            o.get_status_display(),
+            str(o.amount)
+        ])
+
+    table = Table(data)
+    table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+    ]))
+
+    elements.append(table)
+    doc.build(elements)
+
+    return response
+
+
+def sales_orders_delete(request):
+    
+    if request.method == "POST":
+        ids = request.POST.getlist("selected_ids")
+
+        if ids:
+            SalesOrder.objects.filter(id__in=ids).delete()
+
+    return redirect("sales_orders")
+
 
 def delivery_new_view(request):
     return render_page(
@@ -792,7 +1328,138 @@ def stock_analysis_view(request):
         inventory_open=True,
         extra={"analysis_open": True},
     )
+from django.db.models import Sum, Q
+from .models import Inventory, GoodsReceiptItem, SalesOrderItem, Product, SupplierMaster
 
+def stock_analysis_view(request):
+    # 1. Get filter parameters
+    loc_query = request.GET.get('location', '').strip()
+    from_date = request.GET.get('from_date', '')
+    to_date = request.GET.get('to_date', '')
+    product_query = request.GET.get('product', '').strip()
+    status_query = request.GET.get('status', '')
+    supplier_query = request.GET.get('supplier', '').strip()
+
+    # 2. Fetch all unique suppliers for the dropdown
+    # We get names from SupplierMaster to populate the filter dropdown
+    all_suppliers = SupplierMaster.objects.all().order_by('name')
+
+    inventory_qs = Inventory.objects.all()
+
+    # Apply Location filter
+    if loc_query:
+        inventory_qs = inventory_qs.filter(location__icontains=loc_query)
+
+    # Apply Product filter
+    if product_query:
+        inventory_qs = inventory_qs.filter(
+            Q(product_name__icontains=product_query) |
+            Q(product_code__icontains=product_query)
+        )
+
+    stock_data = []
+
+    for inv in inventory_qs:
+        # GET LAST SUPPLIER from database for this specific item
+               # ✅ DATE FILTER LOGIC
+        date_qs = GoodsReceiptItem.objects.filter(
+            product_code=inv.product_code
+        )
+
+        if from_date:
+            date_qs = date_qs.filter(
+                goods_receipt__receipt_date__gte=from_date
+            )
+
+        if to_date:
+            date_qs = date_qs.filter(
+                goods_receipt__receipt_date__lte=to_date
+            )
+
+        filtered_gr_item = date_qs.select_related(
+            'goods_receipt'
+        ).order_by(
+            '-goods_receipt__receipt_date'
+        ).first()
+        # 🚨 If date filter applied and no receipt found in that date range, skip item
+        if (from_date or to_date) and not filtered_gr_item:
+           continue
+
+        receipt_date = (
+            filtered_gr_item.goods_receipt.receipt_date
+            if filtered_gr_item else None
+        )
+
+        actual_supplier = (
+            filtered_gr_item.goods_receipt.supplier
+            if filtered_gr_item else "No Supplier"
+        )
+
+        # DROPDOWN FILTER LOGIC:
+        # Skip this item if a supplier is selected in dropdown but doesn't match database
+        if supplier_query and supplier_query != actual_supplier:
+            continue
+
+        # STOCK IN (PURCHASE)
+        in_qs = GoodsReceiptItem.objects.filter(product_code=inv.product_code)
+        if from_date:
+            in_qs = in_qs.filter(goods_receipt__receipt_date__gte=from_date)
+        if to_date:
+            in_qs = in_qs.filter(goods_receipt__receipt_date__lte=to_date)
+        stock_in = in_qs.aggregate(total=Sum('accepted_qty'))['total'] or 0
+
+        # STOCK OUT (SALES)
+        out_qs = SalesOrderItem.objects.filter(product__product_name=inv.product_name)
+        if from_date:
+            out_qs = out_qs.filter(sales_order__order_date__gte=from_date)
+        if to_date:
+            out_qs = out_qs.filter(sales_order__order_date__lte=to_date)
+        stock_out = out_qs.aggregate(total=Sum('qty'))['total'] or 0
+
+        # MIN STOCK
+        prod_master = PurchaseProduct.objects.filter(code=inv.product_code).first()
+        min_stock = 10
+        if prod_master and hasattr(prod_master, 'reorder_qty'):
+            min_stock = prod_master.reorder_qty
+
+        # STATUS
+        current_qty = inv.stock_qty
+        if current_qty <= 0:
+            status_label = "out"
+        elif current_qty <= min_stock:
+            status_label = "low"
+        else:
+            status_label = "available"
+
+        if status_query and status_query != status_label:
+            continue
+
+        stock_data.append({
+            "product": {
+                "name": inv.product_name,
+                "location": inv.location,
+                "supplier": actual_supplier,
+                "min_stock": min_stock
+            },
+            "date": receipt_date, 
+            "purchase_qty": stock_in,
+            "sales_qty": stock_out,
+            "current_stock": current_qty,
+            "status": status_label
+        })
+
+    return render_page(
+        request,
+        "stock_analysis.html",
+        "Stock Analysis",
+        "stock_analysis",
+        inventory_open=True,
+        extra={
+            "analysis_open": True,
+            "stock_data": stock_data,
+            "all_suppliers": all_suppliers # Pass list to dropdown
+        },
+    )
 
 def finance_view(request):
     return render_page(request, "finance.html", "Finance", "finance")

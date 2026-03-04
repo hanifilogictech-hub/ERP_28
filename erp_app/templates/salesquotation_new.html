@@ -262,7 +262,14 @@
             </button>
 
             <div class="sales-save-wrapper">
-                <button type="submit" class="sales-save-btn">Save</button>
+                <!-- <button type="submit" class="sales-save-btn">Save</button> -->
+                 <button type="submit" name="status" value="unapproved" class="sales-save-btn">
+                    Save as Unapproved
+                </button>
+
+                <button type="submit" name="status" value="approved" class="sales-save-btn" style="background:#28a745;">
+                    Save as Approved
+                </button>
                 <button type="button" class="sales-save-arrow" id="saveDropdownBtn">▼</button>
 
                 <div class="sales-save-dropdown" id="saveDropdownMenu">

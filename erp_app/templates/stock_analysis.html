@@ -4,107 +4,180 @@
 {% block content %}
 
 <div class="analysis-container">
-    <div class="top-buttons">
-        <button class="btn-yellow">Update Stock</button>
-        <button class="btn-yellow">Print</button>
-        <button class="btn-yellow">Search</button>
-    </div>
+    <form method="GET">
 
-    <div class="filter-card">
-
-        <div class="form-row">
-            <div class="form-group">
-                <label>Location</label>
-                <select>
-                    <option>Select</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label>From Date</label>
-                <input type="date">
-            </div>
-
-            <div class="form-group">
-                <label>To Date</label>
-                <input type="date">
-            </div>
-
-            <div class="form-group">
-                <label>product code</label>
-                <input type="text" placeholder="Enter product code">
-            </div>
-
-            <div class="form-group">
-                <label>product name</label>
-                <input type="text" placeholder="Enter product name">
-            </div>
-        </div>
-
-        <div class="form-row">
-            <div class="form-group">
-                <label>Department</label>
-                <select>
-                    <option>Select Department</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label>Category</label>
-                <select>
-                    <option>Select Category</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label>sub category
-                </label>
-                <select>
-                    <option>Select sub Category</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label>Supplier</label>
-                <select>
-                    <option>Select Supplier</option>
-                </select>
-            </div>
-          <div class="form-group">
-                <label>supply by purchase</label>
-                <select>
-                    <option>Select </option>
-                </select>
-            </div>
-            
-        </div>
-
-    </div>
-
-    <div class="table-card">
-        <table>
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>product code</th>
-                    <th>product name</th>
-                    <th>department</th>
-                    <th>category</th>
-                    <th>sub category</th>
-                    <th>Supplier</th>
-                    <th>supply by purchase</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td colspan="9">No Data Found</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-
+<div class="top-buttons">
+    <button type="submit" class="btn-yellow">Search</button>
+    <button type="button" onclick="window.print()" class="btn-yellow">Print</button>
+    <!-- ONLY ADDED THIS LINE BELOW -->
+    <button type="button" onclick="deleteSelectedRows()" class="btn-yellow" style="background:#dc3545; color:white; cursor:pointer;">🗑️ Delete</button>
 </div>
+        
+
+    <div class="form-row">
+
+        <div class="form-group">
+            <label>Location</label>
+            <input type="text" name="location" value="{{ request.GET.location }}">
+        </div>
+
+        <div class="form-group">
+            <label>From Date</label>
+            <input type="date" name="from_date" value="{{ request.GET.from_date }}">
+        </div>
+
+        <div class="form-group">
+            <label>To Date</label>
+            <input type="date" name="to_date" value="{{ request.GET.to_date }}">
+        </div>
+
+        <div class="form-group">
+            <label>Item Name</label>
+            <input type="text" name="product" placeholder="Enter product name"
+                   value="{{ request.GET.product }}">
+        </div>
+
+    </div>
+
+    <div class="form-row">
+
+        <div class="form-group">
+            <label>Status</label>
+            <select name="status">
+                <option value="">All</option>
+                <option value="out">Out of Stock</option>
+                <option value="low">Low Stock</option>
+                <option value="available">Available</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+    <label>Supplier</label>
+    <select name="supplier">
+        <option value=""> All Suppliers</option>
+        {% for s in all_suppliers %}
+            <option value="{{ s.name }}" {% if request.GET.supplier == s.name %}selected{% endif %}>
+                {{ s.name }}
+            </option>
+        {% endfor %}
+    </select>
+</div>
+    </div>
+
+     </div>
+</form>
+<div class="print-area">
+    <table>
+    <thead>
+    <tr>
+        <th>
+            <input type="checkbox" onclick="toggleAll(this)">
+        </th>
+        <th>Location</th>
+        <th>date</th>
+        <th>Item Name</th>
+        <th>Item Qty</th>
+        <th>Stock In (Purchase)</th>
+        <th>Stock Out (Sales)</th>
+        <th>Current Stock</th>
+        <th>Supplier</th>
+        <th>Status</th>
+        
+    </tr>
+</thead>
+    <tbody>
+        {% for item in stock_data %}
+        <tr>
+
+            <!-- Checkbox -->
+            <td>
+            <input type="checkbox" class="stock-checkbox">
+            </td>
+
+            <!-- Location -->
+            <td>{{ item.product.location }}</td>
+
+            <td>{{ item.date|date:"d-m-Y" }}</td>
+            
+
+            <!-- Item Name -->
+            <td>{{ item.product.name }}</td>
+
+            <!-- Item Qty (Opening or Base Qty if you have) -->
+            <td>{{ item.purchase_qty }}</td>
+
+            <!-- Stock In -->
+            <td>{{ item.purchase_qty }}</td>
+
+            <!-- Stock Out -->
+            <td>{{ item.sales_qty }}</td>
+
+            <!-- Current Stock -->
+            <td style="font-weight:bold;
+                color:{% if item.current_stock <= item.product.min_stock %}red{% else %}black{% endif %}">
+                {{ item.current_stock }}
+            </td>
+
+            <!-- Supplier -->
+            <td>{{ item.product.supplier }}</td>
+
+            <!-- Status -->
+            <td>
+                {% if item.current_stock == 0 %}
+                    <span style="color:red;">Out of Stock</span>
+                {% elif item.current_stock < 0 %}
+                    <span style="color:darkred;">Negative</span>
+                {% elif item.current_stock <= item.product.min_stock %}
+                    <span style="color:orange;">Low Stock</span>
+                {% elif item.current_stock > item.product.min_stock|add:item.product.min_stock %}
+                    <span style="color:blue;">Overstock</span>
+                {% else %}
+                    <span style="color:green;">Available</span>
+                {% endif %}
+            </td>
+
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="11">No Data Found</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+
 <style>
+    @media print {
+    body * {
+        visibility: hidden;
+    }
+    @media print {
+    th:first-child,
+    td:first-child {
+        display: none;
+    }
+}
+
+    .print-area, .print-area * {
+        visibility: visible;
+    }
+
+    .print-area {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+    }
+
+    .top-buttons {
+        display: none;
+    }
+
+    form {
+        display: none;
+    }
+}
+
 .analysis-container { padding:20px; }
 .analysis-title { font-size:22px; font-weight:600; color:#2c3e50; margin-bottom:15px; }
 

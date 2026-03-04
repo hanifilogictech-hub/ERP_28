@@ -291,3 +291,41 @@ window.addEventListener("DOMContentLoaded", () => {
   initDashboardFilters();
   initListPrintDeleteActions();
 });
+
+function deleteSelectedRows() {
+    const selected = document.querySelectorAll('.stock-checkbox:checked');
+    
+    if (selected.length === 0) {
+        alert("Please select at least one item to delete.");
+        return;
+    }
+
+    if (confirm("Are you sure you want to delete the selected items from the database?")) {
+        const itemsToDelete = [];
+        selected.forEach(cb => {
+            itemsToDelete.push({
+                name: cb.getAttribute('data-name'),
+                location: cb.getAttribute('data-location')
+            });
+        });
+
+        // Sending the delete request to the server
+        fetch('/stock-analysis-delete/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ items: itemsToDelete })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.ok) {
+                alert("Items deleted successfully.");
+                location.reload(); // Refresh page to show updated list
+            } else {
+                alert("Error: " + data.error);
+            }
+        });
+    }
+}

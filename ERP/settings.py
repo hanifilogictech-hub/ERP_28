@@ -92,7 +92,7 @@ WSGI_APPLICATION = 'ERP.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': BASE_DIR / 'erp.db',
     }
 }
 
@@ -157,3 +157,5 @@ LOGIN_REDIRECT_URL = '/'
 
 # After logout
 LOGOUT_REDIRECT_URL = '/login/'
+
+

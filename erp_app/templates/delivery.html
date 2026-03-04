@@ -1,271 +1,433 @@
 {% extends "base_layout.html" %}
 {% block content %}
 
-<div class="page-card">
+<div class="sales-form-wrapper">
 
-    <!-- TOP BAR -->
-    <div class="erp-topbar">
+    <h2 class="erp-page-title">Add Sales Delivery</h2>
 
-    <div class="erp-topbar-title">
-        Sales Delivery Management
-    </div>
+    <form method="POST">
+        {% csrf_token %}
 
-    <!-- RIGHT SIDE BUTTON -->
-    <div class="dropdown">
+        <!-- ================= TOP ROW ================= -->
+        <div class="sales-top-row">
+            <div class="sales-field">
+                <label>Tran No</label>
+                <input type="text" name="tran_no">
+            </div>
 
-        <!-- MAIN BUTTON -->
-        <a href="{% url 'delivery_new' %}" class="filter-btn sm">
-            New Transaction
-        </a>
-
-        <!-- ARROW -->
-        <button type="button" class="filter-btn sm dropdown-toggle">
-            <i class="fa-solid fa-chevron-down"></i>
-        </button>
-
-        <!-- DROPDOWN MENU -->
-        <div class="dropdown-menu">
-            <a href="#">Convert to Sales Invoice</a>
-            <a href="#">Create Bulk Do</a>
-            <a href="#">Send Sms</a>
-            <a href="#">Repeat Delivery Order</a>
-            <a href="#">Change DO Date</a>
-            <a href="#">Tracking Images</a>
-            <a href="#">Print Without Price</a>
+            <div class="sales-field">
+                <label>Tran Date</label>
+                <input type="date" name="tran_date">
+            </div>
         </div>
 
-    </div>
-
-</div>
-    <!-- FILTER ROW 1 -->
-    <div class="filter-row sales-row-1">
-
-        <input type="text"
-               class="filter-input sm"
-               placeholder="Transaction No">
-
-        <button class="filter-btn sm">
-            Search
-        </button>
-
-        <button class="icon-btn">
-            <i class="fa-solid fa-print"></i>
-        </button>
-
-        <button class="icon-btn delete-btn">
-            <i class="fa-solid fa-trash"></i>
-        </button>
-
-        <!-- FROM DATE -->
-        <div class="date-field">
-            <label>From Date</label>
-            <input type="date" class="filter-input sm">
+        <!-- ================= TABS ================= -->
+        <div class="sales-tabs">
+            <div class="sales-tab active" data-tab="customer-section">Customer</div>
+            <div class="sales-tab" data-tab="currency-section">Currency</div>
+            <div class="sales-tab" data-tab="shipping-section">Shipping</div>
+            <div class="sales-tab" data-tab="salesman-section">Sales Man</div>
         </div>
 
-        <!-- TO DATE -->
-        <div class="date-field">
-            <label>To Date</label>
-            <input type="date" class="filter-input sm">
+        <!-- ================= CUSTOMER SECTION ================= -->
+        <div id="customer-section" class="tab-section">
+
+            <div class="sales-customer-box">
+                <div class="sales-customer-grid">
+
+                    <div>
+                        <div class="sales-input-group">
+                            <label>Customer Code</label>
+                            <input type="text" name="customer_code">
+                        </div>
+
+                        <div class="sales-input-group">
+                            <label>Customer Name</label>
+                            <input type="text" name="customer_name">
+                        </div>
+
+                        <div class="sales-input-group">
+                            <label>Contact Person</label>
+                            <input type="text" name="contact_person">
+                        </div>
+
+                        <div class="sales-input-group">
+                            <label>Remarks</label>
+                            <input type="text" name="remarks">
+                        </div>
+
+                        <div class="sales-input-group">
+                            <label>From Date / To Date</label>
+                            <div class="sales-date-range">
+                                <input type="date" name="from_date">
+                                <input type="date" name="to_date">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="sales-input-group">
+                            <label>Contact Address1</label>
+                            <input type="text" name="address1">
+                        </div>
+
+                        <div class="sales-input-group">
+                            <label>Contact Address2</label>
+                            <input type="text" name="address2">
+                        </div>
+
+                        <div class="sales-input-group">
+                            <label>Contact Address3</label>
+                            <input type="text" name="address3">
+                        </div>
+
+                        <div class="sales-input-group">
+                            <label>Country / Postal</label>
+                            <div class="sales-date-range">
+                                <input type="text" name="country">
+                                <input type="text" name="postal">
+                            </div>
+                        </div>
+
+                        <div class="sales-input-group">
+                            <label>Order No / Order Date</label>
+                            <div class="sales-date-range">
+                                <input type="text" name="order_no">
+                                <input type="date" name="order_date">
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
         </div>
 
-    </div>
+        <!-- ================= CURRENCY SECTION ================= -->
+<div id="currency-section" class="tab-section" style="display:none;">
 
-    <!-- FILTER ROW 2 -->
-    <div class="filter-row sales-row-2">
+    <div class="sales-customer-box">
+        <div class="sales-customer-grid">
 
-       <div class="custom-dropdown location-dropdown">
+            <!-- LEFT SIDE -->
+            <div>
+                <div class="sales-input-group">
+                    <label>Currency Code</label>
+                    <input type="text" name="currency_code">
+                </div>
 
-    <div class="dropdown-label">
-        Select Location
-        <i class="fa-solid fa-chevron-down arrow"></i>
-    </div>
+                <div class="sales-input-group">
+                    <label>Currency Name</label>
+                    <input type="text" name="currency_name">
+                </div>
+            </div>
 
-    <div class="dropdown-menu-custom">
-        <input type="text" class="dropdown-search" placeholder="Search location...">
+            <!-- RIGHT SIDE -->
+            <div>
+                <div class="sales-input-group">
+                    <label>Currency Rate</label>
+                    <input type="number" step="0.01" name="currency_rate">
+                </div>
+            </div>
 
-        <div class="dropdown-options">
-            <div class="dropdown-item">Select Location</div>
         </div>
     </div>
 
 </div>
 
-        <input type="text"
-               class="filter-input sm"
-               placeholder="Customer">
+<!-- SELECT ALL FOR SHIPPING -->
+<div id="shippingSelectArea" style="display:none; margin-bottom:10px;">
+    <label style="font-weight:600;">
+        <input type="checkbox" id="selectAllProducts">
+        Select All
+    </label>
+</div>
 
-       <div class="custom-dropdown location-dropdown">
+<!-- ================= SALESMAN SECTION ================= -->
+<div id="salesman-section" class="tab-section" style="display:none;">
 
-    
-   <div class="custom-dropdown approved-dropdown">
+    <div class="sales-customer-box">
+        <div class="sales-customer-grid">
 
-    <div class="dropdown-label">
-        Select all Approved Status
-        <i class="fa-solid fa-chevron-down arrow"></i>
-    </div>
+            <div>
+                <div class="sales-input-group">
+                    <label>Sales Man Code</label>
+                    <input type="text" name="salesman_code">
+                </div>
+            </div>
 
-    <div class="dropdown-menu-custom">
-        <input type="text" class="dropdown-search" placeholder="Search status...">
-
-        <div class="dropdown-options">
-            <div class="dropdown-item">Select all Approved Status</div>
-            <div class="dropdown-item">Approved</div>
-            <div class="dropdown-item">Unapproved</div>
         </div>
     </div>
 
 </div>
 
+        <!-- ================= PRODUCT TABLE ================= -->
+        <div class="sales-table-wrapper">
+            <table class="sales-table">
+                <thead>
+                    <tr>
+                        <th>S No</th>
+                        <th>Product Code</th>
+                        <th>Product Name</th>
+                        <th>Carton Qty</th>
+                        <th>Loose Qty</th>
+                        <th>Qty</th>
+                        <th>Price</th>
+                        <th>Total</th>
+                        <th>Shift Type</th>
+                        <th>% Discount $</th>
+                        <th>Gross Total</th>
+                        <th></th> <!-- NEW ICON COLUMN -->
+                    </tr>
+                </thead>
+
+                <tbody id="salesTableBody">
+
+                    <!-- FIRST PRODUCT ROW -->
+                    <tr class="product-row">
+                        <td>1</td>
+                        <td><input type="text" name="product_code[]"></td>
+                        <td><input type="text" name="product_name[]"></td>
+                        <td><input type="number" name="carton_qty[]" value="0"></td>
+                        <td><input type="number" name="loose_qty[]" value="0"></td>
+                        <td><input type="number" name="qty[]" value="0"></td>
+                        <td><input type="number" name="price[]" value="0"></td>
+                        <td><input type="number" name="total[]" value="0" readonly></td>
+                        <td>
+                            <select name="shift_type[]">
+                                <option value="">Select</option>
+                                <option value="Day">Day</option>
+                                <option value="Night">Night</option>
+                            </select>
+                        </td>
+                        <td><input type="number" name="discount[]"></td>
+                        <td><input type="number" name="gross_total[]" readonly></td>
+                        <td style="text-align:center;">
+                            <span class="delete-row" style="cursor:pointer;">🗑</span>
+                            <span class="add-row" style="cursor:pointer;">➕</span>
+                            <span style="cursor:pointer;">ℹ</span>
+                        </td>
+                    </tr>
+
+                    <!-- ADD ROW -->
+                    <tr id="addRow">
+                        <td style="text-align:center;">
+                            <button type="button" id="addProductBtn">+</button>
+                        </td>
+                        <td><strong>Summary</strong></td>
+                        <td colspan="10"></td>
+                    </tr>
+
+                    <!-- SUMMARY ROW -->
+                    <tr class="sales-summary-row">
+                        <td colspan="6">Summary</td>
+                        <td>0.00</td>
+                        <td colspan="3"></td>
+                        <td>0.00</td>
+                        <td></td>
+                    </tr>
+
+                </tbody>
+            </table>
+        </div>
+
+        <!-- ================= INFO STRIP ================= -->
+        <div class="sales-info-strip">
+            <div>UOM:</div>
+            <div>Pieces/Carton: 0.00</div>
+            <div>Purchase UnitCost: 0.00</div>
+            <div>Profit%: 0.00</div>
+            <div>Wholesale Price: 0.00</div>
+            <div>CQty: 0.00</div>
+            <div>Qty On Hand: 0.00</div>
+        </div>
+
+        <!-- ================= TOTAL SECTION ================= -->
+        <div class="sales-total-section">
+            <div class="sales-total-left">
+                <div>Total Product: 0</div>
+                <div>Bill Discount: $ <input type="number" style="width:80px;"></div>
+            </div>
+            <div class="sales-total-right">
+                <div>Sub Total: $ 0.00</div>
+                <div>Tax: $ 0.00</div>
+                <div class="sales-net-total">Net Total: $ 0.00</div>
+            </div>
+        </div>
+
+        <!-- ================= BOTTOM BAR ================= -->
+        <div class="sales-bottom-bar">
+            <button type="button" class="sales-cancel-btn" onclick="window.history.back();">
+                Cancel
+            </button>
+
+            <div class="sales-save-wrapper">
+                <button type="submit" class="sales-save-btn">Save</button>
+                <button type="button" class="sales-save-arrow" id="saveDropdownBtn">▼</button>
+
+                <div class="sales-save-dropdown" id="saveDropdownMenu">
+                    <button type="submit" name="action" value="save_send">Save & Send</button>
+                    <button type="submit" name="action" value="save_print">Save & Print</button>
+                    <button type="submit" name="action" value="save_cancel">Save & Cancel</button>
+                </div>
+            </div>
+        </div>
+
+    </form>
 </div>
 
-    </div>
-
-    <!-- TABLE PANEL -->
-    <div class="dash-panel wide">
-
-        <table class="dash-table">
-            <thead>
-                <tr>
-                    <th><input type="checkbox"></th>
-                    <th>Tran No</th>
-                    <th>Tran Date</th>
-                    <th>Customer</th>
-                    <th>Status</th>
-                    <th>Sms Status</th>
-                    <th>Sub Total</th>
-                    <th>Tax</th>
-                    <th>Net Total</th>
-                </tr>
-            </thead>
-
-            <tbody>
-                <tr>
-                    <td colspan="6" class="empty-cell">
-                        No data available in table
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-
-    </div>
-
-   <!-- TABLE FOOTER -->
-<div class="table-bottom">
-
-    <div class="records-info">
-        Total Records : 0
-    </div>
-
-    <div class="pagination">
-        <button class="page-btn">Previous</button>
-        <button class="page-btn">Next</button>
-    </div>
-
-</div>
-
-</div>
 <script>
 
-// ===============================
-// 1️⃣ TOP RIGHT "New Transaction" DROPDOWN
-// ===============================
-const dropdownToggle = document.querySelector(".dropdown-toggle");
-const dropdown = document.querySelector(".dropdown");
+/* ================= TAB SWITCHING ================= */
+document.querySelectorAll('.sales-tab').forEach(tab => {
+    tab.addEventListener('click', function () {
 
-if (dropdownToggle && dropdown) {
-    dropdownToggle.addEventListener("click", function(e) {
+        // Remove active class
+        document.querySelectorAll('.sales-tab')
+            .forEach(t => t.classList.remove('active'));
+
+        // Hide all sections
+        document.querySelectorAll('.tab-section')
+            .forEach(section => section.style.display = "none");
+
+        this.classList.add('active');
+
+        const target = this.getAttribute('data-tab');
+        const targetSection = document.getElementById(target);
+
+        if (targetSection) {
+            targetSection.style.display = "block";
+        }
+
+        // ✅ SHOW SELECT ALL ONLY FOR SHIPPING
+        const shippingSelect = document.getElementById("shippingSelectArea");
+
+        if (target === "shipping-section") {
+            shippingSelect.style.display = "block";
+        } else {
+            shippingSelect.style.display = "none";
+        }
+
+    });
+});
+
+/* ================= SAVE DROPDOWN ================= */
+const dropdownBtn = document.getElementById("saveDropdownBtn");
+const dropdownMenu = document.getElementById("saveDropdownMenu");
+
+if (dropdownBtn && dropdownMenu) {
+
+    dropdownBtn.addEventListener("click", function (e) {
         e.stopPropagation();
-        dropdown.classList.toggle("active");
+        dropdownMenu.style.display =
+            dropdownMenu.style.display === "block" ? "none" : "block";
     });
 
-    document.addEventListener("click", function(e) {
-        if (!e.target.closest(".dropdown")) {
-            dropdown.classList.remove("active");
-        }
+    dropdownMenu.addEventListener("click", function (e) {
+        e.stopPropagation();
+    });
+
+    document.addEventListener("click", function () {
+        dropdownMenu.style.display = "none";
     });
 }
 
 
-// ===============================
-// 2️⃣ CUSTOM SEARCHABLE DROPDOWNS
-// ===============================
-document.querySelectorAll(".dropdown-label").forEach(function(label) {
+/* ================= TABLE LOGIC ================= */
+const tableBody = document.getElementById("salesTableBody");
 
-    label.addEventListener("click", function(e) {
-        e.stopPropagation();
-
-        // Close all other dropdowns
-        document.querySelectorAll(".dropdown-menu-custom").forEach(function(menu) {
-            if (menu !== label.nextElementSibling) {
-                menu.style.display = "none";
-            }
-        });
-
-        const menu = this.nextElementSibling;
-
-        menu.style.display =
-            menu.style.display === "block" ? "none" : "block";
+/* Reindex product rows */
+function reIndexRows() {
+    const rows = tableBody.querySelectorAll(".product-row");
+    rows.forEach((row, index) => {
+        row.children[0].innerText = index + 1;
     });
+}
 
-});
+/* Add/Delete/SubRow */
+tableBody.addEventListener("click", function(e){
 
+    /* DELETE ROW */
+    if(e.target.classList.contains("delete-row")){
+        const row = e.target.closest("tr");
+        const nextRow = row.nextElementSibling;
 
-// ===============================
-// 3️⃣ CLOSE DROPDOWN IF CLICK OUTSIDE
-// ===============================
-document.addEventListener("click", function(e) {
+        if(nextRow && nextRow.classList.contains("sub-row")){
+            nextRow.remove();
+        }
 
-    if (!e.target.closest(".custom-dropdown")) {
-        document.querySelectorAll(".dropdown-menu-custom").forEach(function(menu) {
-            menu.style.display = "none";
-        });
+        row.remove();
+        reIndexRows();
     }
 
+    /* OPEN SUB ROW */
+    if(e.target.classList.contains("add-row")){
+
+        const mainRow = e.target.closest("tr");
+
+        if(mainRow.nextElementSibling &&
+           mainRow.nextElementSibling.classList.contains("sub-row")){
+            return;
+        }
+
+        const subRow = document.createElement("tr");
+        subRow.classList.add("sub-row");
+
+        subRow.innerHTML = `
+            <td></td>
+            <td><input type="text" name="product_code_remark[]" placeholder="Remarks"></td>
+            <td><input type="text" name="product_name_remark[]" placeholder="Remarks"></td>
+            <td><input type="number" name="foc_qty[]" placeholder="FOC Qty"></td>
+            <td></td>
+            <td><input type="text" name="uom[]" placeholder="UOM"></td>
+            <td><input type="number" name="kilo_price[]" placeholder="Kilo Price"></td>
+            <td colspan="5"></td>
+        `;
+
+        mainRow.parentNode.insertBefore(subRow, mainRow.nextSibling);
+    }
 });
 
 
-// ===============================
-// 4️⃣ SEARCH FILTER INSIDE DROPDOWN
-// ===============================
-document.querySelectorAll(".dropdown-search").forEach(function(input) {
+/* ================= ADD PRODUCT ROW ================= */
+const addBtn = document.getElementById("addProductBtn");
 
-    input.addEventListener("keyup", function() {
+addBtn.addEventListener("click", function () {
 
-        const filter = this.value.toLowerCase();
-        const items = this
-            .closest(".dropdown-menu-custom")
-            .querySelectorAll(".dropdown-item");
+    const productRows = tableBody.querySelectorAll(".product-row");
+    const newIndex = productRows.length + 1;
 
-        items.forEach(function(item) {
-            const text = item.textContent.toLowerCase();
-            item.style.display =
-                text.includes(filter) ? "block" : "none";
-        });
+    const newRow = document.createElement("tr");
+    newRow.classList.add("product-row");
 
-    });
+    newRow.innerHTML = `
+        <td>${newIndex}</td>
+        <td><input type="text" name="product_code[]"></td>
+        <td><input type="text" name="product_name[]"></td>
+        <td><input type="number" name="carton_qty[]" value="0"></td>
+        <td><input type="number" name="loose_qty[]" value="0"></td>
+        <td><input type="number" name="qty[]" value="0"></td>
+        <td><input type="number" name="price[]" value="0"></td>
+        <td><input type="number" name="total[]" value="0" readonly></td>
+        <td>
+            <select name="shift_type[]">
+                <option value="">Select</option>
+                <option value="Day">Day</option>
+                <option value="Night">Night</option>
+            </select>
+        </td>
+        <td><input type="number" name="discount[]"></td>
+        <td><input type="number" name="gross_total[]" readonly></td>
+        <td style="text-align:center;">
+            <span class="delete-row" style="cursor:pointer;">🗑</span>
+            <span class="add-row" style="cursor:pointer;">➕</span>
+            <span style="cursor:pointer;">ℹ</span>
+        </td>
+    `;
 
-});
-
-
-// ===============================
-// 5️⃣ SELECT OPTION AND UPDATE LABEL
-// ===============================
-document.querySelectorAll(".dropdown-item").forEach(function(item) {
-
-    item.addEventListener("click", function(e) {
-        e.stopPropagation();
-
-        const dropdownContainer = this.closest(".custom-dropdown");
-        const label = dropdownContainer.querySelector(".dropdown-label");
-
-        // Update label text (keep arrow icon)
-        label.childNodes[0].nodeValue = this.textContent + " ";
-
-        // Close dropdown
-        dropdownContainer.querySelector(".dropdown-menu-custom").style.display = "none";
-    });
-
+    const addRow = document.getElementById("addRow");
+    tableBody.insertBefore(newRow, addRow);
 });
 
 </script>
+
 {% endblock %}

@@ -20,8 +20,45 @@ class PurchaseOrder(models.Model):
     class Meta:
         db_table = "purchase_orders"
 
+class SalesQuotation(models.Model):
+    tran_no = models.CharField(max_length=50)
+    tran_date = models.DateField()
+    customer_name = models.CharField(max_length=150)
+    remarks = models.TextField(blank=True, null=True)
+    total_amount = models.FloatField(default=0)
+    approved = models.BooleanField(default=False)
+
+    class Meta:
+        db_table = "sales_quotations"
+
+    def __str__(self):
+        return self.tran_no
+
+
+class SalesQuotationItem(models.Model):
+    quotation = models.ForeignKey(
+        SalesQuotation,
+        on_delete=models.CASCADE,
+        related_name="items"
+    )
+    product_code = models.CharField(max_length=50)
+    product_name = models.CharField(max_length=150)
+    qty = models.FloatField()
+    price = models.FloatField()
+    total = models.FloatField()
+
+    class Meta:
+        db_table = "sales_quotation_items"
+
+
 
 class SalesOrder(models.Model):
+    STATUS_CHOICES = [
+        ("open", "Open"),
+        ("progress", "In Progress"),
+        ("closed", "Closed"),
+    ]
+
     order_no = models.CharField(max_length=64)
     order_date = models.DateField()
     invoice_no = models.CharField(max_length=64)
@@ -30,8 +67,35 @@ class SalesOrder(models.Model):
     paid_amount = models.FloatField(default=0)
     salesman = models.CharField(max_length=64, default="Salesman 1")
 
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="open"
+    )
+
+    # ✅ ADD THIS
+    printed = models.BooleanField(default=False)
+
     class Meta:
         db_table = "sales_orders"
+
+        
+class Delivery(models.Model):
+    STATUS_CHOICES = [
+        ("open", "Open"),
+        ("closed", "Closed"),
+    ]
+
+    tran_no = models.CharField(max_length=50)
+    tran_date = models.DateField()
+    customer = models.CharField(max_length=150)
+    sub_total = models.FloatField(default=0)
+    tax = models.FloatField(default=0)
+    net_total = models.FloatField(default=0)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="open")
+
+    class Meta:
+        db_table = "deliveries"        
 
 
 class PurchaseInvoice(models.Model):
@@ -71,7 +135,7 @@ class Product(models.Model):
 
 class SalesOrderItem(models.Model):
     sales_order = models.ForeignKey(
-        SalesOrder,
+        "erp_app.SalesOrder",
         on_delete=models.CASCADE,
         db_column="sales_order_id",
         related_name="items",
