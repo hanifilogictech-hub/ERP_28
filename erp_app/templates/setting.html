@@ -3,6 +3,22 @@
 {% block page_heading %}{% endblock %}
 
 {% block content %}
+<style>
+  .tax-settings-shell { display: grid; grid-template-columns: 280px 1fr; gap: 16px; margin-top: 8px; }
+  .tax-settings-left, .tax-settings-card { background: #e7ebef; border: 1px solid #cfd6dd; border-radius: 8px; padding: 14px; }
+  .tax-settings-left h3, .tax-settings-card h3 { margin: 0 0 10px; color: #1d3e67; }
+  .tax-settings-left p { margin: 0 0 14px; color: #35485f; line-height: 1.4; }
+  .tax-back-link { color: #0d6fb8; text-decoration: none; font-weight: 700; }
+  .tax-field-row { display: grid; grid-template-columns: 140px 170px; align-items: center; gap: 8px; margin-bottom: 14px; }
+  .tax-field-row input, .tax-modules-tools select, .tax-modules-table input { border: 1px solid #b8c6d5; border-radius: 6px; padding: 8px 10px; background: #fff; }
+  .tax-modules-head { display: flex; justify-content: space-between; gap: 10px; align-items: center; margin-bottom: 10px; }
+  .tax-modules-tools { display: flex; gap: 8px; align-items: center; }
+  .tax-modules-table { width: 100%; border-collapse: collapse; background: #fff; }
+  .tax-modules-table th, .tax-modules-table td { border: 1px solid #d9e0e7; padding: 8px 10px; text-align: left; }
+  .tax-remove-btn { border: 0; background: #e75b5b; color: #fff; border-radius: 5px; padding: 6px 10px; cursor: pointer; }
+  .tax-actions { margin-top: 12px; display: flex; justify-content: flex-end; }
+  @media (max-width: 960px) { .tax-settings-shell { grid-template-columns: 1fr; } }
+</style>
 <section class="erp-topbar">
   <div class="erp-topbar-right">
     <button class="topbar-icon-btn" id="quickLinksBtn" type="button" title="Quick Links">&#9638;</button>
@@ -29,7 +45,152 @@
 </div>
 
 <section class="dashboard-headline">Manage Settings</section>
+{% if settings_section == "tax" %}
+{{ tax_module_options|json_script:"tax-module-options-data" }}
+{{ tax_module_rows|json_script:"tax-module-rows-data" }}
+<section class="tax-settings-shell">
+  <aside class="tax-settings-left">
+    <h3>Tax Settings</h3>
+    <p>Configure fixed default tax by module. Purchase tax value is applied automatically in the Purchase module editor.</p>
+    <a class="tax-back-link" href="{% url 'settings' %}">Back to Settings</a>
+  </aside>
 
+  <section class="tax-settings-card">
+    <h3>Purchase Tax</h3>
+    <div class="tax-field-row">
+      <label for="purchaseTaxPercent">Purchase (%)</label>
+      <input id="purchaseTaxPercent" type="number" step="0.01" min="0" value="{{ purchase_tax_setting.tax_percent|default:0 }}">
+    </div>
+
+    <div class="tax-modules-head">
+      <strong>Module Tax Mapping</strong>
+      <div class="tax-modules-tools">
+        <select id="taxModuleSelect">
+          <option value="">Select module</option>
+          {% for module in tax_module_options %}
+          {% if module.key != "purchase" %}
+          <option value="{{ module.key }}">{{ module.label }}</option>
+          {% endif %}
+          {% endfor %}
+        </select>
+        <button type="button" id="addTaxModuleBtn" class="po-inline-add">+ Add Module</button>
+      </div>
+    </div>
+
+    <table class="tax-modules-table">
+      <thead>
+        <tr>
+          <th>Module</th>
+          <th>Tax %</th>
+          <th>Fixed</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="taxModulesBody"></tbody>
+    </table>
+
+    <div class="tax-actions">
+      <button type="button" id="saveTaxSettingsBtn" class="po-editor-save">Save Tax Settings</button>
+    </div>
+  </section>
+</section>
+
+<script>
+  (function () {
+    var moduleOptions = JSON.parse(document.getElementById("tax-module-options-data").textContent || "[]");
+    var existingRows = JSON.parse(document.getElementById("tax-module-rows-data").textContent || "[]");
+    var moduleSelect = document.getElementById("taxModuleSelect");
+    var addBtn = document.getElementById("addTaxModuleBtn");
+    var body = document.getElementById("taxModulesBody");
+    var purchaseTaxInput = document.getElementById("purchaseTaxPercent");
+    var saveBtn = document.getElementById("saveTaxSettingsBtn");
+
+    if (!moduleSelect || !addBtn || !body || !purchaseTaxInput || !saveBtn) return;
+
+    function toNumber(value) {
+      var num = parseFloat(value);
+      return Number.isFinite(num) ? num : 0;
+    }
+
+    function labelFromKey(key) {
+      var found = moduleOptions.find(function (row) { return row.key === key; });
+      return found ? found.label : key;
+    }
+
+    function hasModuleRow(moduleKey) {
+      return Array.from(body.querySelectorAll("tr")).some(function (row) {
+        return row.dataset.moduleKey === moduleKey;
+      });
+    }
+
+    function renderModuleRow(moduleKey, taxPercent) {
+      if (!moduleKey || hasModuleRow(moduleKey)) return;
+      var row = document.createElement("tr");
+      row.dataset.moduleKey = moduleKey;
+      row.innerHTML =
+        "<td>" + labelFromKey(moduleKey) + "</td>" +
+        "<td><input class='tax-module-percent' type='number' step='0.01' min='0' value='" + toNumber(taxPercent).toFixed(2) + "'></td>" +
+        "<td><input type='text' value='Fixed' readonly></td>" +
+        "<td><button type='button' class='tax-remove-btn' aria-label='Remove module'>Remove</button></td>";
+      body.appendChild(row);
+    }
+
+    existingRows.forEach(function (row) {
+      renderModuleRow(row.module_key, row.tax_percent);
+    });
+
+    addBtn.addEventListener("click", function () {
+      var moduleKey = moduleSelect.value;
+      if (!moduleKey) {
+        window.alert("Select a module first.");
+        return;
+      }
+      renderModuleRow(moduleKey, toNumber(purchaseTaxInput.value));
+      moduleSelect.value = "";
+    });
+
+    body.addEventListener("click", function (event) {
+      var btn = event.target.closest(".tax-remove-btn");
+      if (!btn) return;
+      var row = btn.closest("tr");
+      if (row) row.remove();
+    });
+
+    saveBtn.addEventListener("click", async function () {
+      var purchaseTax = toNumber(purchaseTaxInput.value);
+      if (purchaseTax < 0) {
+        window.alert("Purchase tax cannot be negative.");
+        return;
+      }
+      var modules = Array.from(body.querySelectorAll("tr")).map(function (row) {
+        var taxInput = row.querySelector(".tax-module-percent");
+        return {
+          module_key: row.dataset.moduleKey || "",
+          tax_percent: toNumber(taxInput ? taxInput.value : 0)
+        };
+      });
+      try {
+        var response = await fetch("{% url 'tax_settings_save_api' %}", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            purchase_tax: purchaseTax,
+            modules: modules
+          })
+        });
+        var data = await response.json();
+        if (!response.ok || data.ok === false) {
+          throw new Error((data && data.error) || "Unable to save tax settings.");
+        }
+        purchaseTaxInput.value = toNumber(purchaseTax).toFixed(2);
+        window.alert("Tax settings saved.");
+      } catch (error) {
+        window.alert(error.message || "Unable to save tax settings.");
+      }
+    });
+  })();
+</script>
+{% else %}
 <section class="settings-grid">
   <article class="setting-card"><div class="inner"><h3>&#9881;<br>Organization</h3><p>view organization settings</p><a href="/settings/?section=organization">VIEW</a></div></article>
   <article class="setting-card"><div class="inner"><h3>&#9881;<br>E-Commerce</h3><p>view ecommerce settings</p><a href="/settings/?section=ecommerce">VIEW</a></div></article>
@@ -40,6 +201,7 @@
   <article class="setting-card"><div class="inner"><h3>&#9881;<br>Import/Export</h3><p>view import/export</p><a href="/settings/?section=import-export">VIEW</a></div></article>
   <article class="setting-card"><div class="inner"><h3>&#9881;<br>Email Settings</h3><p>view email settings</p><a href="/settings/?section=email">VIEW</a></div></article>
   <article class="setting-card"><div class="inner"><h3>&#9881;<br>Financial Settings</h3><p>view financial settings</p><a href="/settings/?section=financial">VIEW</a></div></article>
+  <article class="setting-card"><div class="inner"><h3>&#9881;<br>Tax</h3><p>view tax settings</p><a href="/settings/?section=tax">VIEW</a></div></article>
 
   <article class="setting-card"><div class="inner"><h3>&#9881;<br>Bulk Update</h3><p>view bulk update</p><a href="/settings/?section=bulk-update">VIEW</a></div></article>
   <article class="setting-card"><div class="inner"><h3>&#9881;<br>E-Procurement</h3><p>view eproc settings</p><a href="/settings/?section=eprocurement">VIEW</a></div></article>
@@ -48,4 +210,5 @@
 
   <article class="setting-card"><div class="inner"><h3>&#9881;<br>Payroll</h3><p>view payroll settings</p><a href="/settings/?section=payroll">VIEW</a></div></article>
 </section>
+{% endif %}
 {% endblock %}

@@ -12,6 +12,7 @@
 {{ po_products|json_script:"po-products-data" }}
 {{ po_warehouses|json_script:"po-warehouses-data" }}
 {{ po_payment_terms|json_script:"po-payment-terms-data" }}
+{{ purchase_tax_percent|json_script:"po-purchase-tax-data" }}
 
 <section class="purchase-window purchase-order-window" id="po-list-view">
   <div class="doc-body">
@@ -239,7 +240,7 @@
         <td><input class="po-line-qty" type="number" min="0" value="0"></td>
         <td><input class="po-line-price" type="number" step="0.01" min="0" value="0"></td>
         <td><input class="po-line-discount" type="number" step="0.01" min="0" value="0"></td>
-        <td><input class="po-line-tax" type="number" step="0.01" min="0" value="0"></td>
+        <td><input class="po-line-tax" type="number" step="0.01" min="0" value="{{ purchase_tax_percent|default:0|floatformat:2 }}" readonly></td>
         <td><input class="po-line-total po-readonly-field" type="number" step="0.01" min="0" value="0" readonly></td>
         <td class="po-editor-actions">
           <button type="button" data-editor-action="delete" title="Delete row" aria-label="Delete row">&#128465;</button>
@@ -271,6 +272,7 @@
   (function () {
     var suppliers = JSON.parse(document.getElementById("po-suppliers-data").textContent || "[]");
     var products = JSON.parse(document.getElementById("po-products-data").textContent || "[]");
+    var fixedPurchaseTax = toNumber(JSON.parse(document.getElementById("po-purchase-tax-data").textContent || "0"));
     var tableBody = document.querySelector(".po-items-table tbody");
     var openEditorBtn = document.getElementById("po-open-editor-btn");
     var cancelEditorBtn = document.getElementById("po-cancel-editor-btn");
@@ -429,7 +431,7 @@
         "<td><input class='po-line-qty' type='number' min='0' value='0'></td>" +
         "<td><input class='po-line-price' type='number' step='0.01' min='0' value='0'></td>" +
         "<td><input class='po-line-discount' type='number' step='0.01' min='0' value='0'></td>" +
-        "<td><input class='po-line-tax' type='number' step='0.01' min='0' value='0'></td>" +
+        "<td><input class='po-line-tax' type='number' step='0.01' min='0' value='" + fixedPurchaseTax.toFixed(2) + "' readonly></td>" +
         "<td><input class='po-line-total po-readonly-field' type='number' step='0.01' min='0' value='0' readonly></td>" +
         "<td class='po-editor-actions'>" +
           "<button type='button' data-editor-action='delete' title='Delete row' aria-label='Delete row'>&#128465;</button>" +
@@ -447,12 +449,12 @@
       if (!product) {
         if (descriptionInput) descriptionInput.value = "";
         if (priceInput) priceInput.value = "0";
-        if (taxInput) taxInput.value = "0";
+        if (taxInput) taxInput.value = fixedPurchaseTax.toFixed(2);
         return;
       }
       if (descriptionInput) descriptionInput.value = product.description || product.name;
       if (priceInput) priceInput.value = formatMoney(product.unit_price);
-      if (taxInput) taxInput.value = toNumber(product.tax_percent).toFixed(2);
+      if (taxInput) taxInput.value = fixedPurchaseTax.toFixed(2);
     }
 
     function calculateRow(row) {
@@ -767,8 +769,7 @@
       if (
         event.target.classList.contains("po-line-qty") ||
         event.target.classList.contains("po-line-discount") ||
-        event.target.classList.contains("po-line-price") ||
-        event.target.classList.contains("po-line-tax")
+        event.target.classList.contains("po-line-price")
       ) {
         calculateRow(row);
         recalculateTotals();

@@ -54,11 +54,50 @@ from .models import (
     StockTransferItem,
     SupplierLedgerEntry,
     SupplierMaster,
+    TaxModuleSetting,
     WarehouseMaster,
 )
 from .services.dashboard import dashboard_data
 
 PO_PAYMENT_TERMS = ["Net 30", "Cash", "Credit"]
+TAX_MODULE_OPTIONS = [
+    {"key": "purchase", "label": "Purchase"},
+    {"key": "purchase_order", "label": "Purchase Order"},
+    {"key": "goods_receipt", "label": "Goods Receipt"},
+    {"key": "goods_return", "label": "Goods Return"},
+    {"key": "purchase_invoice", "label": "Purchase Invoice"},
+    {"key": "sales", "label": "Sales"},
+    {"key": "sales_quotation", "label": "Sales Quotation"},
+    {"key": "sales_orders", "label": "Sales Orders"},
+    {"key": "delivery", "label": "Delivery"},
+    {"key": "sales_return", "label": "Sales Return"},
+    {"key": "invoice", "label": "Invoice"},
+    {"key": "stock", "label": "Stock"},
+    {"key": "stock_request", "label": "Stock Request"},
+    {"key": "stock_transfer", "label": "Stock Transfer"},
+    {"key": "stock_adjustment", "label": "Stock Adjustment"},
+    {"key": "stock_take", "label": "Stock Take"},
+    {"key": "finance", "label": "Finance"},
+]
+
+
+def _module_tax_percent(module_key, default=0.0):
+    setting = (
+        TaxModuleSetting.objects.filter(module_key=module_key)
+        .values("tax_percent")
+        .first()
+    )
+    if setting:
+        return _to_float(setting.get("tax_percent"), default)
+    return _to_float(default, 0)
+
+
+def _effective_purchase_tax_percent():
+    purchase_tax = _module_tax_percent("purchase", 0)
+    purchase_order_tax = _module_tax_percent("purchase_order", 0)
+    if purchase_tax <= 0 and purchase_order_tax > 0:
+        return purchase_order_tax
+    return purchase_tax
 
 
 def _to_float(value, default=0.0):
@@ -213,6 +252,7 @@ def purchase_view(request):
 
 def purchase_order_view(request):
     init_db()
+    purchase_tax_percent = _effective_purchase_tax_percent()
     suppliers = list(
         SupplierMaster.objects.order_by("name").values(
             "code", "name", "contact", "address", "country", "currency", "payment_terms"
@@ -227,6 +267,7 @@ def purchase_order_view(request):
     po_rows = []
     for po in PurchaseOrder.objects.order_by("-order_date", "-id")[:120]:
         first_item = po.po_items.order_by("id").first()
+        row_tax_percent = purchase_tax_percent if first_item else ""
         po_rows.append(
             {
                 "po_no": po.order_no,
@@ -234,7 +275,7 @@ def purchase_order_view(request):
                 "qty": first_item.qty if first_item else "",
                 "supplier_name": po.supplier,
                 "unit_price": first_item.unit_price if first_item else "",
-                "tax_percent": first_item.tax_percent if first_item else "",
+                "tax_percent": row_tax_percent,
                 "net_total": first_item.net_total if first_item else po.amount,
                 "status": po.status or "Draft",
                 "warehouse": po.warehouse or "",
@@ -257,6 +298,7 @@ def purchase_order_view(request):
             "po_payment_terms": PO_PAYMENT_TERMS,
             "po_today": date.today().isoformat(),
             "po_rows": po_rows,
+            "purchase_tax_percent": purchase_tax_percent,
         },
     )
 
@@ -1466,7 +1508,121 @@ def finance_view(request):
 
 
 def settings_view(request):
-    return render_page(request, "setting.html", "Settings", "dashboard")
+    init_db()
+    section = (request.GET.get("section") or "").strip().lower()
+    tax_rows = list(
+        TaxModuleSetting.objects.order_by("module_label", "module_key").values(
+            "module_key", "module_label", "tax_percent", "is_fixed"
+        )
+    )
+    purchase_tax_setting = next(
+        (row for row in tax_rows if (row.get("module_key") or "") == "purchase"),
+        {"module_key": "purchase", "module_label": "Purchase", "tax_percent": 0, "is_fixed": True},
+    )
+    purchase_order_setting = next(
+        (row for row in tax_rows if (row.get("module_key") or "") == "purchase_order"),
+        None,
+    )
+    if (
+        _to_float(purchase_tax_setting.get("tax_percent"), 0) <= 0
+        and purchase_order_setting
+        and _to_float(purchase_order_setting.get("tax_percent"), 0) > 0
+    ):
+        purchase_tax_setting = {
+            **purchase_tax_setting,
+            "tax_percent": _to_float(purchase_order_setting.get("tax_percent"), 0),
+        }
+    tax_module_rows = [
+        row for row in tax_rows if (row.get("module_key") or "") != "purchase"
+    ]
+    return render_page(
+        request,
+        "setting.html",
+        "Settings",
+        "dashboard",
+        extra={
+            "settings_section": section,
+            "tax_module_options": TAX_MODULE_OPTIONS,
+            "purchase_tax_setting": purchase_tax_setting,
+            "tax_module_rows": tax_module_rows,
+        },
+    )
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def tax_settings_save_api(request):
+    init_db()
+    payload = _json_payload(request)
+    purchase_tax = _to_float(payload.get("purchase_tax"), 0)
+    modules = payload.get("modules") or []
+
+    if purchase_tax < 0:
+        return JsonResponse({"ok": False, "error": "Purchase tax must be 0 or higher."}, status=400)
+    if not isinstance(modules, list):
+        return JsonResponse({"ok": False, "error": "Modules payload is invalid."}, status=400)
+
+    allowed = {item["key"]: item["label"] for item in TAX_MODULE_OPTIONS}
+    non_purchase_keys = [key for key in allowed.keys() if key != "purchase"]
+    upserted = []
+    module_tax_map = {}
+    for row in modules:
+        key = (row.get("module_key") or "").strip()
+        if not key:
+            continue
+        module_tax_map[key] = _to_float(row.get("tax_percent"), 0)
+
+    if purchase_tax <= 0 and _to_float(module_tax_map.get("purchase_order"), 0) > 0:
+        purchase_tax = _to_float(module_tax_map.get("purchase_order"), 0)
+
+    # Purchase module is the primary tax setting from this UI.
+    TaxModuleSetting.objects.update_or_create(
+        module_key="purchase",
+        defaults={
+            "module_label": allowed.get("purchase", "Purchase"),
+            "tax_percent": purchase_tax,
+            "is_fixed": True,
+        },
+    )
+    upserted.append({"module_key": "purchase", "tax_percent": purchase_tax})
+
+    if "purchase_order" in allowed:
+        TaxModuleSetting.objects.update_or_create(
+            module_key="purchase_order",
+            defaults={
+                "module_label": allowed["purchase_order"],
+                "tax_percent": purchase_tax,
+                "is_fixed": True,
+            },
+        )
+        module_tax_map["purchase_order"] = purchase_tax
+
+    saved_module_keys = set()
+    for row in modules:
+        module_key = (row.get("module_key") or "").strip()
+        if not module_key or module_key not in allowed:
+            continue
+        tax_percent = _to_float(row.get("tax_percent"), 0)
+        if module_key == "purchase_order":
+            tax_percent = purchase_tax
+        if tax_percent < 0:
+            continue
+        saved_module_keys.add(module_key)
+        TaxModuleSetting.objects.update_or_create(
+            module_key=module_key,
+            defaults={
+                "module_label": allowed[module_key],
+                "tax_percent": tax_percent,
+                "is_fixed": True,
+            },
+        )
+        upserted.append({"module_key": module_key, "tax_percent": tax_percent})
+
+    TaxModuleSetting.objects.filter(module_key__in=non_purchase_keys).exclude(
+        module_key__in=saved_module_keys
+    ).delete()
+
+    return JsonResponse({"ok": True, "saved": upserted})
 
 
 def health_view(request):
@@ -1580,6 +1736,7 @@ def po_save_api(request):
     invoice_no = (payload.get("invoice_no") or po_no).strip()
     amount = _to_float(payload.get("grand_total"), 0)
     items = payload.get("items") or []
+    fixed_purchase_tax = _effective_purchase_tax_percent()
 
     if supplier_code and not SupplierMaster.objects.filter(code=supplier_code).exists():
         return JsonResponse(
@@ -1610,18 +1767,25 @@ def po_save_api(request):
         product_name = (item.get("product_name") or "").strip()
         if not product_name:
             continue
+        qty = _to_float(item.get("qty"), 0)
+        unit_price = _to_float(item.get("unit_price"), 0)
+        discount_percent = _to_float(item.get("discount_percent"), 0)
+        line_total = (qty * unit_price) * (1 - (discount_percent / 100))
+        if line_total < 0:
+            line_total = 0
+        net_total = line_total + (line_total * (fixed_purchase_tax / 100))
         batch.append(
             PurchaseOrderItem(
                 purchase_order=po_obj,
                 product_code=(item.get("product_code") or "").strip(),
                 product_name=product_name,
                 description=(item.get("description") or "").strip(),
-                qty=_to_float(item.get("qty"), 0),
-                unit_price=_to_float(item.get("unit_price"), 0),
-                discount_percent=_to_float(item.get("discount_percent"), 0),
-                tax_percent=_to_float(item.get("tax_percent"), 0),
-                line_total=_to_float(item.get("line_total"), 0),
-                net_total=_to_float(item.get("net_total"), 0),
+                qty=qty,
+                unit_price=unit_price,
+                discount_percent=discount_percent,
+                tax_percent=fixed_purchase_tax,
+                line_total=line_total,
+                net_total=net_total,
             )
         )
     if batch:
@@ -1655,6 +1819,7 @@ def gr_po_details_api(request):
         receipt_by_code[code] = receipt_by_code.get(code, 0) + _to_float(item.received_qty, 0)
 
     items = []
+    fixed_purchase_tax = _effective_purchase_tax_percent()
     for po_item in po_obj.po_items.all().order_by("id"):
         code = (po_item.product_code or "").strip()
         already_received = receipt_by_code.get(code, 0)
@@ -1668,7 +1833,7 @@ def gr_po_details_api(request):
                 "already_received_qty": already_received,
                 "remaining_qty": remaining,
                 "unit_price": _to_float(po_item.unit_price, 0),
-                "tax_percent": _to_float(po_item.tax_percent, 0),
+                "tax_percent": fixed_purchase_tax,
             }
         )
 

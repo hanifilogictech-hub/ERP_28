@@ -36,6 +36,7 @@ from .views import (
     purchase_view,
     sales_view,
     settings_view,
+    tax_settings_save_api,
     stock_view,
     stock_adjustment_view,
     stock_adjustment_new_view,
@@ -129,5 +130,6 @@ urlpatterns = [
     path('stock-analysis/', stock_analysis_view, name='stock_analysis'),
     path("finance/", finance_view, name="finance"),
     path("settings/", settings_view, name="settings"),
+    path("settings/api/tax/save/", tax_settings_save_api, name="tax_settings_save_api"),
     path("health/", health_view, name="health"),
 ]

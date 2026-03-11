@@ -181,6 +181,16 @@ class PurchaseProduct(models.Model):
         db_table = "purchase_products"
 
 
+class TaxModuleSetting(models.Model):
+    module_key = models.CharField(max_length=64, unique=True)
+    module_label = models.CharField(max_length=128, default="", blank=True)
+    tax_percent = models.FloatField(default=0)
+    is_fixed = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = "tax_module_settings"
+
+
 class PurchaseOrderItem(models.Model):
     purchase_order = models.ForeignKey(
         PurchaseOrder,
