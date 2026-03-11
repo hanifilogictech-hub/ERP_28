@@ -1,0 +1,57 @@
+{% extends "dashboard.html" %}
+{% load static %}
+
+{% block page_heading %}
+<h1>Add/Edit Tax</h1>
+{% endblock %}
+
+{% block content %}
+<div style="background:#eef1f5; padding:18px; border:1px solid #d4d9e2; border-radius:6px;">
+  <form method="POST" action="{{ form_action }}" style="max-width:900px;">
+    {% csrf_token %}
+    <div style="display:grid; grid-template-columns: 220px 1fr; gap:12px 22px; align-items:center;">
+      <label>Tax Name <span style="color:#c21a1a;">*</span></label>
+      <input type="text" name="tax_name" placeholder="Enter Tax Name" required value="{{ tax.tax_name|default:'' }}" style="border:1px solid #7ca4d9; padding:8px 10px;">
+
+      <label>Tax Type</label>
+      <select name="tax_type" style="border:1px solid #c9ced6; padding:8px 10px;">
+        <option value="">Select an Option</option>
+        <option value="GST" {% if tax.tax_type == "GST" %}selected{% endif %}>GST</option>
+        <option value="VAT" {% if tax.tax_type == "VAT" %}selected{% endif %}>VAT</option>
+        <option value="Service" {% if tax.tax_type == "Service" %}selected{% endif %}>Service</option>
+      </select>
+
+      <label>Tax Code</label>
+      <select name="tax_code" style="border:1px solid #c9ced6; padding:8px 10px;">
+        <option value="">Select an Option</option>
+        <option value="STANDARD" {% if tax.tax_code == "STANDARD" %}selected{% endif %}>STANDARD</option>
+        <option value="ZERO" {% if tax.tax_code == "ZERO" %}selected{% endif %}>ZERO</option>
+        <option value="EXEMPT" {% if tax.tax_code == "EXEMPT" %}selected{% endif %}>EXEMPT</option>
+      </select>
+
+      <label>Tax For</label>
+      <select name="tax_for" style="border:1px solid #c9ced6; padding:8px 10px;">
+        <option value="Both" {% if tax.tax_for == "Both" or not tax %}selected{% endif %}>Both</option>
+        <option value="Sales" {% if tax.tax_for == "Sales" %}selected{% endif %}>Sales</option>
+        <option value="Purchase" {% if tax.tax_for == "Purchase" %}selected{% endif %}>Purchase</option>
+      </select>
+
+      <label>Tax Percentage <span style="color:#c21a1a;">*</span></label>
+      <input type="number" name="tax_percentage" placeholder="Enter Tax Percentage" step="0.01" min="0" required value="{{ tax.tax_percentage|default:'' }}" style="border:1px solid #c9ced6; padding:8px 10px;">
+
+      <label>Sort Code</label>
+      <input type="text" name="sort_code" placeholder="Enter Sort Code" value="{{ tax.sort_code|default:'' }}" style="border:1px solid #c9ced6; padding:8px 10px;">
+
+      <label></label>
+      <label style="display:flex; align-items:center; gap:10px; font-weight:600;">
+        <input type="checkbox" name="is_active" {% if tax %}{% if tax.is_active %}checked{% endif %}{% else %}checked{% endif %}> IsActive
+      </label>
+    </div>
+
+    <div style="margin-top:22px; display:flex; gap:12px; justify-content:center;">
+      <button type="submit" style="background:#f2cd00; border:0; padding:10px 20px; border-radius:26px; font-weight:700;">Save</button>
+      <a href="{% url 'tax_list' %}" style="background:#ff3b30; color:white; padding:10px 20px; border-radius:26px; text-decoration:none; font-weight:700;">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

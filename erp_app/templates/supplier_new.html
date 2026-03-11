@@ -1,0 +1,240 @@
+{% extends "dashboard.html" %}
+{% load static %}
+
+{% block page_heading %}
+<h1>New/Edit Supplier</h1>
+{% endblock %}
+
+{% block content %}
+<div class="supplier-wrap">
+  <form method="POST" id="supplierForm" action="{{ form_action }}">
+    {% csrf_token %}
+    <input type="hidden" name="contacts_json" id="contactsJson" value="{{ contacts_json|default:'[]' }}">
+
+    <div class="header-grid">
+      <div>
+        <label>Supplier Code</label>
+        <input type="text" name="supplier_code" required value="{{ supplier.supplier_code|default:'' }}">
+      </div>
+      <div>
+        <label>Supplier Name <span>*</span></label>
+        <input type="text" name="supplier_name" required value="{{ supplier.supplier_name|default:'' }}">
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button type="button" class="tab-btn active" data-tab="additional">Additional</button>
+      <button type="button" class="tab-btn" data-tab="login">Supplier Login Info</button>
+      <button type="button" class="tab-btn" data-tab="contact">Contact</button>
+    </div>
+
+    <div id="additional" class="tab-pane active">
+      <div class="two-col">
+        <div>
+          <label>Address1 <span>*</span></label><input type="text" name="address1" value="{{ supplier.address1|default:'' }}">
+          <label>Address2 <span>*</span></label><input type="text" name="address2" value="{{ supplier.address2|default:'' }}">
+          <label>Address3 <span>*</span></label><input type="text" name="address3" value="{{ supplier.address3|default:'' }}">
+          <label>Country/Postal <span>*</span></label>
+          <div class="inline-two">
+            <input type="text" name="country" value="{{ supplier.country|default:'' }}">
+            <input type="text" name="postal" value="{{ supplier.postal|default:'' }}">
+          </div>
+          <label>Phone Number <span>*</span></label><input type="text" name="phone_number" value="{{ supplier.phone_number|default:'' }}">
+          <label>Hand Phone Number <span>*</span></label><input type="text" name="hand_phone_number" value="{{ supplier.hand_phone_number|default:'' }}">
+          <label>Fax No</label><input type="text" name="fax_no" value="{{ supplier.fax_no|default:'' }}">
+          <label>Email <span>*</span></label><input type="email" name="email" value="{{ supplier.email|default:'' }}">
+          <label>WebSite</label><input type="text" name="website" value="{{ supplier.website|default:'' }}">
+          <label>Company RegNo</label><input type="text" name="company_reg_no" value="{{ supplier.company_reg_no|default:'' }}">
+          <div class="toggle-line">
+            <span>IsActive</span>
+            <label class="switch">
+              <input type="checkbox" name="is_active" {% if supplier %}{% if supplier.is_active %}checked{% endif %}{% else %}checked{% endif %}>
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+        <div>
+          <label>Tax <span>*</span></label>
+          <select name="tax">
+            <option value="">Select Tax</option>
+            {% for t in taxes %}
+            <option value="{{ t.tax_name }}" {% if supplier.tax == t.tax_name %}selected{% endif %}>{{ t.tax_name }}</option>
+            {% endfor %}
+          </select>
+          <label>Price Group</label>
+          <select name="price_group">
+            <option value="">Select On Option</option>
+            <option value="Retail" {% if supplier.price_group == "Retail" %}selected{% endif %}>Retail</option>
+            <option value="Wholesale" {% if supplier.price_group == "Wholesale" %}selected{% endif %}>Wholesale</option>
+          </select>
+          <label>Contact Type</label>
+          <select name="contact_type">
+            <option value="">Select On Option</option>
+            <option value="Direct" {% if supplier.contact_type == "Direct" %}selected{% endif %}>Direct</option>
+            <option value="Dealer" {% if supplier.contact_type == "Dealer" %}selected{% endif %}>Dealer</option>
+          </select>
+          <label>Area</label>
+          <select name="area">
+            <option value="">Select On Option</option>
+            <option value="North" {% if supplier.area == "North" %}selected{% endif %}>North</option>
+            <option value="South" {% if supplier.area == "South" %}selected{% endif %}>South</option>
+          </select>
+          <label>Currency <span>*</span></label>
+          <select name="currency">
+            <option value="">Select Currency</option>
+            {% for c in currencies %}
+            <option value="{{ c.currency_name }}" {% if supplier.currency == c.currency_name %}selected{% endif %}>{{ c.currency_name }}</option>
+            {% endfor %}
+          </select>
+          <label>Terms</label>
+          <select name="terms">
+            <option value="">Select On Terms</option>
+            {% for t in terms %}
+            <option value="{{ t.term_name }}" {% if supplier.terms == t.term_name %}selected{% endif %}>{{ t.term_name }}</option>
+            {% endfor %}
+          </select>
+          <label>CreditLimit</label><input type="number" step="0.01" min="0" name="credit_limit" value="{{ supplier.credit_limit|default:'' }}">
+          <label>Remarks</label><input type="text" name="remarks" value="{{ supplier.remarks|default:'' }}">
+          <label>Cheque Print Name</label><input type="text" name="cheque_print_name" value="{{ supplier.cheque_print_name|default:'' }}">
+        </div>
+      </div>
+    </div>
+
+    <div id="login" class="tab-pane">
+      <div class="login-grid">
+        <label>User Name</label><input type="text" name="login_username" id="loginUsername" value="{{ login.username|default:'' }}">
+        <label>Password</label><input type="password" name="login_password" id="loginPassword" value="{{ login.password|default:'' }}">
+        <label>Show Password</label><input type="checkbox" id="showPassword">
+      </div>
+    </div>
+
+    <div id="contact" class="tab-pane">
+      <div class="form-grid">
+        <div>
+          <label>Contact Person</label><input type="text" id="contact_person">
+          <label>Phone No</label><input type="text" id="contact_phone_no">
+          <label>Fax No</label><input type="text" id="contact_fax_no">
+        </div>
+        <div>
+          <label>Email</label><input type="email" id="contact_email">
+          <label>HandPhone No</label><input type="text" id="contact_handphone_no">
+        </div>
+      </div>
+      <div class="row-action">
+        <button type="button" class="round-btn" id="addContactBtn">+</button>
+      </div>
+      <table class="grid-table">
+        <thead>
+          <tr>
+            <th>Contact Person</th><th>Email</th><th>Phone No</th><th>HandPhone No</th><th>Fax No</th><th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="contactRows"></tbody>
+      </table>
+    </div>
+
+    <div class="save-wrap">
+      <button type="submit" class="save-btn">Save</button>
+    </div>
+  </form>
+</div>
+
+<style>
+  .supplier-wrap { background: #cfd4dc; padding: 16px; border: 1px solid #b8bec8; }
+  label { display: block; margin: 10px 0 6px; font-size: 14px; }
+  label span { color: #cf1b1b; }
+  input, select, textarea { width: 100%; border: 1px solid #bcc2cb; padding: 8px 10px; background: #fff; font-size: 14px; }
+  .header-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 12px; }
+  .tabs { display: flex; gap: 14px; border-bottom: 1px solid #c0c5ce; margin-bottom: 12px; }
+  .tab-btn { border: 0; background: transparent; padding: 10px 14px; cursor: pointer; font-weight: 600; font-size: 18px; }
+  .tab-btn.active { border-bottom: 3px solid #e2be00; }
+  .tab-pane { display: none; }
+  .tab-pane.active { display: block; }
+  .two-col, .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .inline-two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .toggle-line { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 14px; }
+  .switch { position: relative; width: 58px; height: 30px; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider { position: absolute; inset: 0; background: #b9c0ca; border-radius: 30px; }
+  .slider:before { content: ""; position: absolute; height: 22px; width: 22px; left: 4px; bottom: 4px; background: #fff; border-radius: 50%; transition: .2s; }
+  .switch input:checked + .slider { background: #18a7d4; }
+  .switch input:checked + .slider:before { transform: translateX(28px); }
+  .login-grid { display: grid; grid-template-columns: 220px 360px; gap: 8px 16px; width: 600px; margin-top: 10px; }
+  .login-grid input[type="checkbox"] { width: 22px; height: 22px; margin-top: 8px; }
+  .row-action { display: flex; justify-content: flex-end; margin: 8px 0 10px; }
+  .round-btn { background: #000; color: #fff; border: 0; border-radius: 50%; font-weight: 700; padding: 8px 14px; cursor: pointer; font-size: 18px; width: 40px; height: 40px; }
+  .grid-table { width: 100%; border-collapse: collapse; background: #fff; margin-top: 6px; }
+  .grid-table th, .grid-table td { border: 1px solid #d3d7de; padding: 8px; font-size: 14px; text-align: left; }
+  .grid-table th { background: #fff; font-weight: 700; }
+  .save-wrap { margin-top: 18px; display: flex; justify-content: flex-end; }
+  .save-btn { border: 0; background: #ffc107; padding: 10px 24px; border-radius: 4px; font-weight: 700; cursor: pointer; font-size: 16px; }
+  .del-btn { border: 0; background: #d9534f; color: #fff; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+  @media (max-width: 980px) {
+    .header-grid, .two-col, .form-grid { grid-template-columns: 1fr; }
+    .login-grid { width: 100%; grid-template-columns: 1fr; }
+  }
+</style>
+
+<script>
+  var contactData = [];
+
+  function byId(id) { return document.getElementById(id); }
+  function clean(v) { return (v || "").trim(); }
+
+  document.querySelectorAll(".tab-btn").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      document.querySelectorAll(".tab-btn").forEach(function (x) { x.classList.remove("active"); });
+      document.querySelectorAll(".tab-pane").forEach(function (x) { x.classList.remove("active"); });
+      btn.classList.add("active");
+      byId(btn.dataset.tab).classList.add("active");
+    });
+  });
+
+  byId("showPassword").addEventListener("change", function () {
+    byId("loginPassword").type = this.checked ? "text" : "password";
+  });
+
+  function syncHiddenJson() {
+    byId("contactsJson").value = JSON.stringify(contactData);
+  }
+
+  function renderContacts() {
+    var body = byId("contactRows");
+    body.innerHTML = "";
+    contactData.forEach(function (row, idx) {
+      var tr = document.createElement("tr");
+      tr.innerHTML = "<td>" + (row.contact_person || "") + "</td><td>" + (row.email || "") + "</td><td>" + (row.phone_no || "") + "</td><td>" + (row.handphone_no || "") + "</td><td>" + (row.fax_no || "") + "</td><td><button type='button' class='del-btn' onclick='removeContact(" + idx + ")'>Delete</button></td>";
+      body.appendChild(tr);
+    });
+    syncHiddenJson();
+  }
+
+  function removeContact(idx) { contactData.splice(idx, 1); renderContacts(); }
+  window.removeContact = removeContact;
+
+  byId("addContactBtn").addEventListener("click", function () {
+    var row = {
+      contact_person: clean(byId("contact_person").value),
+      email: clean(byId("contact_email").value),
+      phone_no: clean(byId("contact_phone_no").value),
+      handphone_no: clean(byId("contact_handphone_no").value),
+      fax_no: clean(byId("contact_fax_no").value)
+    };
+    if (!row.contact_person) { return; }
+    contactData.push(row);
+    ["contact_person", "contact_email", "contact_phone_no", "contact_handphone_no", "contact_fax_no"].forEach(function (id) { byId(id).value = ""; });
+    renderContacts();
+  });
+
+  function initFromHiddenJson() {
+    try { contactData = JSON.parse(byId("contactsJson").value || "[]") || []; } catch (e) { contactData = []; }
+    renderContacts();
+  }
+
+  document.getElementById("supplierForm").addEventListener("submit", function () {
+    syncHiddenJson();
+  });
+
+  initFromHiddenJson();
+</script>
+{% endblock %}

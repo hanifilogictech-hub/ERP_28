@@ -1,0 +1,31 @@
+{% extends "dashboard.html" %}
+{% load static %}
+
+{% block page_heading %}
+<h1>Add/Edit Terms</h1>
+{% endblock %}
+
+{% block content %}
+<div style="background:#eef1f5; padding:18px; border:1px solid #d4d9e2; border-radius:6px;">
+  <form method="POST" action="{{ form_action }}" style="max-width:900px;">
+    {% csrf_token %}
+    <div style="display:grid; grid-template-columns: 220px 1fr; gap:12px 22px; align-items:center;">
+      <label>Term Name <span style="color:#c21a1a;">*</span></label>
+      <input type="text" name="term_name" placeholder="Enter Term Name" required value="{{ term.term_name|default:'' }}" style="border:1px solid #7ca4d9; padding:8px 10px;">
+
+      <label>No Of Days <span style="color:#c21a1a;">*</span></label>
+      <input type="number" name="no_of_days" placeholder="Enter No of Days" required value="{{ term.no_of_days|default:'' }}" style="border:1px solid #c9ced6; padding:8px 10px;">
+
+      <label></label>
+      <label style="display:flex; align-items:center; gap:10px; font-weight:600;">
+        <input type="checkbox" name="is_active" {% if term %}{% if term.is_active %}checked{% endif %}{% else %}checked{% endif %}> IsActive
+      </label>
+    </div>
+
+    <div style="margin-top:22px; display:flex; gap:12px; justify-content:center;">
+      <button type="submit" style="background:#f2cd00; border:0; padding:10px 20px; border-radius:26px; font-weight:700;">Save</button>
+      <a href="{% url 'terms_list' %}" style="background:#ff3b30; color:white; padding:10px 20px; border-radius:26px; text-decoration:none; font-weight:700;">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

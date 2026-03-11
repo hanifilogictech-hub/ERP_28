@@ -1,0 +1,74 @@
+{% extends "dashboard.html" %}
+{% load static %}
+
+{% block page_heading %}
+<div style="display:flex; justify-content:space-between; align-items:center;">
+
+<h1 style="margin:0;">Customer Management</h1>
+
+<a href="{% url 'add_customer' %}" 
+   style="
+    background:#f0ad4e;
+    padding:10px 18px;
+    color:white;
+    text-decoration:none;
+    border-radius:5px;
+    font-weight:600;
+   ">
+    + New Customer
+</a>
+
+</div>
+{% endblock %}
+
+{% block content %}
+
+
+
+
+<div style="background:white; padding:20px; border-radius:6px;">
+
+<table border="1" width="100%" cellpadding="8" cellspacing="0" style="border-collapse:collapse;">
+
+<thead style="background:#f5f5f5;">
+<tr>
+<th>Customer Code</th>
+<th>Customer Name</th>
+<th>Address</th>
+<th>Phone</th>
+<th>Email</th>
+<th>Created User</th>
+</tr>
+</thead>
+
+<tbody>
+
+{% for c in customers %}
+<tr>
+
+<td>{{ c.customer_code }}</td>
+<td><a href="{% url 'edit_customer' c.id %}" style="color:#1a5bb8; font-weight:600; text-decoration:none;">{{ c.customer_name }}</a></td>
+<td>{{ c.address1 }}</td>
+<td>{{ c.phone_number }}</td>
+<td>{{ c.email }}</td>
+<td>{{ c.created_by }}</td>
+
+</tr>
+
+{% empty %}
+
+<tr>
+<td colspan="6" style="text-align:center; padding:15px;">
+No Customers Found
+</td>
+</tr>
+
+{% endfor %}
+
+</tbody>
+
+</table>
+
+</div>
+
+{% endblock %}
