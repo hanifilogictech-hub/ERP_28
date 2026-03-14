@@ -1,0 +1,126 @@
+{% extends "dashboard.html" %}
+{% load static %}
+
+{% block page_heading %}
+<div style="display:flex; justify-content:space-between; align-items:center;">
+  <h1 style="margin:0;">Terms Management</h1>
+</div>
+{% endblock %}
+
+{% block content %}
+<div style="background:#eef1f5; padding:18px; border:1px solid #d4d9e2; border-radius:6px;">
+  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+    <a href="{% url 'add_terms' %}"
+       style="
+        background:#1a7edb;
+        padding:10px 22px;
+        color:white;
+        text-decoration:none;
+        border-radius:22px;
+        font-weight:600;
+       ">
+      Add New(+)
+    </a>
+    <div style="display:flex; align-items:center; gap:10px;">
+      <input id="termsSearch" type="text" placeholder="Search Terms.." style="width:260px; padding:8px 10px; border:1px solid #ccd2dc;">
+      <button type="button" id="termsSearchBtn" style="background:#fff; border:1px solid #ccd2dc; padding:8px 14px; font-weight:600;">Search</button>
+      <div style="display:flex; flex-direction:column; gap:6px; min-width:180px;">
+        <label style="font-size:13px; color:#1a5bb8; font-weight:600;">Filter (Active/Inactive):</label>
+        <select id="termsStatusFilter" style="border:1px solid #ccd2dc; padding:8px 10px;">
+          <option value="">Select Status</option>
+          <option value="active" {% if status_filter == "active" %}selected{% endif %}>Active</option>
+          <option value="inactive" {% if status_filter == "inactive" %}selected{% endif %}>Inactive</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div style="background:#fff; border:1px solid #d4d9e2; border-radius:6px; overflow:hidden;">
+    <table width="100%" cellpadding="8" cellspacing="0" style="border-collapse:collapse;">
+      <thead style="background:#f7f7f9;">
+        <tr>
+          <th style="width:80px;">Action</th>
+          <th>Term Name</th>
+          <th>Status</th>
+          <th>Created User</th>
+          <th>Created Date</th>
+        </tr>
+      </thead>
+      <tbody id="termsTableBody">
+        {% for t in terms %}
+        <tr style="background:#f6f2f2;">
+          <td style="text-align:center;">
+            <button type="button"
+                    class="toggle-terms-btn"
+                    data-id="{{ t.id }}"
+                    data-active="{{ t.is_active|yesno:'1,0' }}"
+                    style="border:0; background:transparent; cursor:pointer; font-size:18px;">
+              &#128465;
+            </button>
+          </td>
+          <td style="color:#1a5bb8; font-weight:600;"><a href="{% url 'edit_terms' t.id %}" style="color:#1a5bb8; font-weight:600; text-decoration:none;">{{ t.term_name }}</a></td>
+          <td>{{ t.is_active|yesno:"Active,Inactive" }}</td>
+          <td>{{ t.created_by }}</td>
+          <td>{{ t.created_date|date:"d/m/Y" }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="5" style="text-align:center; padding:14px;">No Terms Found</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div style="margin-top:14px; font-weight:600;">Total Records : {{ terms|length }}</div>
+</div>
+
+<form id="termsToggleForm" method="POST" style="display:none;">
+  {% csrf_token %}
+</form>
+
+<script>
+  (function () {
+    var searchInput = document.getElementById("termsSearch");
+    var searchBtn = document.getElementById("termsSearchBtn");
+    var tableBody = document.getElementById("termsTableBody");
+    var statusFilter = document.getElementById("termsStatusFilter");
+    var toggleForm = document.getElementById("termsToggleForm");
+
+    function doFilter() {
+      var text = (searchInput.value || "").trim().toLowerCase();
+      var rows = tableBody.querySelectorAll("tr");
+      rows.forEach(function (row) {
+        var rowText = row.textContent.toLowerCase();
+        row.style.display = !text || rowText.indexOf(text) > -1 ? "" : "none";
+      });
+    }
+
+    if (searchBtn) searchBtn.addEventListener("click", doFilter);
+    if (searchInput) searchInput.addEventListener("keyup", function (evt) {
+      if (evt.key === "Enter") doFilter();
+    });
+
+    if (statusFilter) {
+      statusFilter.addEventListener("change", function () {
+        var val = statusFilter.value || "";
+        var url = "{% url 'terms_list' %}";
+        if (val) url += "?status=" + encodeURIComponent(val);
+        window.location.href = url;
+      });
+    }
+
+    document.querySelectorAll(".toggle-terms-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var id = btn.getAttribute("data-id");
+        var isActive = btn.getAttribute("data-active") === "1";
+        var msg = isActive ? "Do you want to inactive this?" : "Do you want to active this?";
+        if (!window.confirm(msg)) return;
+        var url = "{% url 'terms_toggle' 0 %}".replace("/0/", "/" + id + "/");
+        toggleForm.setAttribute("action", url);
+        toggleForm.submit();
+      });
+    });
+  })();
+</script>
+{% endblock %}

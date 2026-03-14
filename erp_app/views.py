@@ -13,6 +13,7 @@ from django.views.decorators.http import require_http_methods
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
+from django.urls import reverse
 from .models import SalesQuotation, SalesQuotationItem
 from .models import SalesOrder, SalesOrderItem
 from .models import Delivery
@@ -52,9 +53,20 @@ from .models import (
     StockTakeItem,
     StockTransfer,
     StockTransferItem,
+    CustomerContact,
+    CustomerLogin,
+    CustomerSalesman,
+    CustomerShipping,
+    Supplier,
+    SupplierContact,
+    SupplierLogin,
+    TaxMaster,
+    TermsMaster,
+    CurrencyMaster,
     SupplierLedgerEntry,
     SupplierMaster,
     WarehouseMaster,
+    Customer,
 )
 from .services.dashboard import dashboard_data
 
@@ -161,6 +173,8 @@ def render_page(
     page_title,
     active_page,
     inventory_open=False,
+    master_open=False,
+    master_section=False,
     sales_open=False,
     purchase_open=False,
     purchase_section=False,
@@ -172,6 +186,8 @@ def render_page(
         "page_title": page_title,
         "active_page": active_page,
         "inventory_open": inventory_open,
+        "master_open": master_open,
+        "master_section": master_section,
         "purchase_open": purchase_open,
         "purchase_section": purchase_section,
         "stock_open": stock_open,
@@ -2941,3 +2957,687 @@ def login_view(request):
 def logout_view(request):
     logout(request)
     return redirect("login")
+
+
+
+def customer_list(request):
+    customers = Customer.objects.all()
+
+    return render_page(
+        request,
+        "customer_list.html",
+        "Customer Management",
+        "customer_list",
+        inventory_open=True,
+        master_open=True,
+        master_section=True,
+        extra={"customers": customers},
+    )
+
+
+def _none_if_blank(value):
+    text = (value or "").strip()
+    return text or None
+
+
+def _json_list_or_empty(raw_value):
+    text = (raw_value or "").strip()
+    if not text:
+        return []
+    try:
+        parsed = json.loads(text)
+    except json.JSONDecodeError:
+        return []
+    if isinstance(parsed, list):
+        return parsed
+    return []
+
+
+def _save_customer(request, customer=None):
+    contacts = _json_list_or_empty(request.POST.get("contacts_json"))
+    shippings = _json_list_or_empty(request.POST.get("shippings_json"))
+    salesmen = _json_list_or_empty(request.POST.get("salesmen_json"))
+
+    with transaction.atomic():
+        if customer is None:
+            customer = Customer.objects.create(
+                customer_code=request.POST.get("customer_code"),
+                customer_name=request.POST.get("customer_name"),
+                address1=_none_if_blank(request.POST.get("address1")),
+                address2=_none_if_blank(request.POST.get("address2")),
+                address3=_none_if_blank(request.POST.get("address3")),
+                country=_none_if_blank(request.POST.get("country")),
+                postal=_none_if_blank(request.POST.get("postal")),
+                phone_number=_none_if_blank(request.POST.get("phone_number")),
+                hand_phone_number=_none_if_blank(request.POST.get("hand_phone_number")),
+                fax_no=_none_if_blank(request.POST.get("fax_no")),
+                email=_none_if_blank(request.POST.get("email")),
+                website=_none_if_blank(request.POST.get("website")),
+                company_reg_no=_none_if_blank(request.POST.get("company_reg_no")),
+                tax=_none_if_blank(request.POST.get("tax")),
+                price_group=_none_if_blank(request.POST.get("price_group")),
+                contact_type=_none_if_blank(request.POST.get("contact_type")),
+                area=_none_if_blank(request.POST.get("area")),
+                currency=_none_if_blank(request.POST.get("currency")),
+                terms=_none_if_blank(request.POST.get("terms")),
+                credit_limit=_none_if_blank(request.POST.get("credit_limit")),
+                remarks=_none_if_blank(request.POST.get("remarks")),
+                cheque_print_name=_none_if_blank(request.POST.get("cheque_print_name")),
+                is_active=request.POST.get("is_active") == "on",
+                created_by=request.user.username if request.user.is_authenticated else "system",
+            )
+        else:
+            customer.customer_code = request.POST.get("customer_code")
+            customer.customer_name = request.POST.get("customer_name")
+            customer.address1 = _none_if_blank(request.POST.get("address1"))
+            customer.address2 = _none_if_blank(request.POST.get("address2"))
+            customer.address3 = _none_if_blank(request.POST.get("address3"))
+            customer.country = _none_if_blank(request.POST.get("country"))
+            customer.postal = _none_if_blank(request.POST.get("postal"))
+            customer.phone_number = _none_if_blank(request.POST.get("phone_number"))
+            customer.hand_phone_number = _none_if_blank(request.POST.get("hand_phone_number"))
+            customer.fax_no = _none_if_blank(request.POST.get("fax_no"))
+            customer.email = _none_if_blank(request.POST.get("email"))
+            customer.website = _none_if_blank(request.POST.get("website"))
+            customer.company_reg_no = _none_if_blank(request.POST.get("company_reg_no"))
+            customer.tax = _none_if_blank(request.POST.get("tax"))
+            customer.price_group = _none_if_blank(request.POST.get("price_group"))
+            customer.contact_type = _none_if_blank(request.POST.get("contact_type"))
+            customer.area = _none_if_blank(request.POST.get("area"))
+            customer.currency = _none_if_blank(request.POST.get("currency"))
+            customer.terms = _none_if_blank(request.POST.get("terms"))
+            customer.credit_limit = _none_if_blank(request.POST.get("credit_limit"))
+            customer.remarks = _none_if_blank(request.POST.get("remarks"))
+            customer.cheque_print_name = _none_if_blank(request.POST.get("cheque_print_name"))
+            customer.is_active = request.POST.get("is_active") == "on"
+            customer.save()
+
+            CustomerLogin.objects.filter(customer=customer).delete()
+            CustomerContact.objects.filter(customer=customer).delete()
+            CustomerShipping.objects.filter(customer=customer).delete()
+            CustomerSalesman.objects.filter(customer=customer).delete()
+
+        login_username = _none_if_blank(request.POST.get("login_username"))
+        login_password = _none_if_blank(request.POST.get("login_password"))
+        if login_username and login_password:
+            CustomerLogin.objects.create(
+                customer=customer,
+                username=login_username,
+                password=login_password,
+                is_active=request.POST.get("login_is_active") == "on",
+            )
+
+        for row in contacts:
+            contact_person = _none_if_blank(row.get("contact_person"))
+            if not contact_person:
+                continue
+            CustomerContact.objects.create(
+                customer=customer,
+                contact_person=contact_person,
+                email=_none_if_blank(row.get("email")),
+                phone_no=_none_if_blank(row.get("phone_no")),
+                handphone_no=_none_if_blank(row.get("handphone_no")),
+                fax_no=_none_if_blank(row.get("fax_no")),
+                designation=_none_if_blank(row.get("designation")),
+            )
+
+        for row in shippings:
+            delivery_name = _none_if_blank(row.get("delivery_name"))
+            delivery_address1 = _none_if_blank(row.get("delivery_address1"))
+            country = _none_if_blank(row.get("country"))
+            postal = _none_if_blank(row.get("postal"))
+            if not delivery_name or not delivery_address1 or not country or not postal:
+                continue
+            CustomerShipping.objects.create(
+                customer=customer,
+                delivery_name=delivery_name,
+                delivery_address1=delivery_address1,
+                delivery_address2=_none_if_blank(row.get("delivery_address2")),
+                delivery_address3=_none_if_blank(row.get("delivery_address3")),
+                phone_no=_none_if_blank(row.get("phone_no")),
+                handphone_no=_none_if_blank(row.get("handphone_no")),
+                fax_no=_none_if_blank(row.get("fax_no")),
+                country=country,
+                postal=postal,
+                email=_none_if_blank(row.get("email")),
+                attention=_none_if_blank(row.get("attention")),
+                default_load_invoice=bool(row.get("default_load_invoice")),
+            )
+
+        for row in salesmen:
+            salesman_name = _none_if_blank(row.get("salesman_name"))
+            if not salesman_name:
+                continue
+            CustomerSalesman.objects.create(customer=customer, salesman_name=salesman_name)
+
+
+def add_customer(request):
+
+    if request.method == "POST":
+        _save_customer(request)
+        return redirect("customer_list")
+
+    taxes = TaxMaster.objects.filter(is_active=True).order_by("tax_name")
+    terms = TermsMaster.objects.filter(is_active=True).order_by("term_name")
+    currencies = CurrencyMaster.objects.filter(is_active=True).order_by("currency_name")
+    return render_page(
+        request,
+        "customer_new.html",
+        "New/Edit Customer",
+        "customer_add",
+        inventory_open=True,
+        master_open=True,
+        master_section=True,
+        extra={
+            "taxes": taxes,
+            "terms": terms,
+            "currencies": currencies,
+            "form_action": reverse("add_customer"),
+        },
+    )
+
+
+def edit_customer(request, customer_id):
+    customer = Customer.objects.filter(id=customer_id).first()
+    if not customer:
+        return redirect("customer_list")
+
+    if request.method == "POST":
+        _save_customer(request, customer=customer)
+        return redirect("customer_list")
+
+    taxes = TaxMaster.objects.filter(is_active=True).order_by("tax_name")
+    terms = TermsMaster.objects.filter(is_active=True).order_by("term_name")
+    currencies = CurrencyMaster.objects.filter(is_active=True).order_by("currency_name")
+    login = CustomerLogin.objects.filter(customer=customer).first()
+    contacts = list(
+        CustomerContact.objects.filter(customer=customer).values(
+            "contact_person", "email", "phone_no", "handphone_no", "fax_no", "designation"
+        )
+    )
+    shippings = list(
+        CustomerShipping.objects.filter(customer=customer).values(
+            "delivery_name",
+            "delivery_address1",
+            "delivery_address2",
+            "delivery_address3",
+            "phone_no",
+            "handphone_no",
+            "fax_no",
+            "country",
+            "postal",
+            "email",
+            "attention",
+            "default_load_invoice",
+        )
+    )
+    salesmen = list(
+        CustomerSalesman.objects.filter(customer=customer).values("salesman_name")
+    )
+    return render_page(
+        request,
+        "customer_new.html",
+        "New/Edit Customer",
+        "customer_add",
+        inventory_open=True,
+        master_open=True,
+        master_section=True,
+        extra={
+            "taxes": taxes,
+            "terms": terms,
+            "currencies": currencies,
+            "customer": customer,
+            "login": login,
+            "contacts_json": json.dumps(contacts),
+            "shippings_json": json.dumps(shippings),
+            "salesmen_json": json.dumps(salesmen),
+            "form_action": reverse("edit_customer", args=[customer_id]),
+        },
+    )
+
+
+def supplier_list(request):
+    suppliers = Supplier.objects.all()
+
+    return render_page(
+        request,
+        "supplier_list.html",
+        "Supplier Management",
+        "supplier_list",
+        inventory_open=True,
+        master_open=True,
+        master_section=True,
+        extra={"suppliers": suppliers},
+    )
+
+
+def _save_supplier(request, supplier=None):
+    contacts = _json_list_or_empty(request.POST.get("contacts_json"))
+
+    with transaction.atomic():
+        if supplier is None:
+            supplier = Supplier.objects.create(
+                supplier_code=request.POST.get("supplier_code"),
+                supplier_name=request.POST.get("supplier_name"),
+                address1=_none_if_blank(request.POST.get("address1")),
+                address2=_none_if_blank(request.POST.get("address2")),
+                address3=_none_if_blank(request.POST.get("address3")),
+                country=_none_if_blank(request.POST.get("country")),
+                postal=_none_if_blank(request.POST.get("postal")),
+                phone_number=_none_if_blank(request.POST.get("phone_number")),
+                hand_phone_number=_none_if_blank(request.POST.get("hand_phone_number")),
+                fax_no=_none_if_blank(request.POST.get("fax_no")),
+                email=_none_if_blank(request.POST.get("email")),
+                website=_none_if_blank(request.POST.get("website")),
+                company_reg_no=_none_if_blank(request.POST.get("company_reg_no")),
+                tax=_none_if_blank(request.POST.get("tax")),
+                price_group=_none_if_blank(request.POST.get("price_group")),
+                contact_type=_none_if_blank(request.POST.get("contact_type")),
+                area=_none_if_blank(request.POST.get("area")),
+                currency=_none_if_blank(request.POST.get("currency")),
+                terms=_none_if_blank(request.POST.get("terms")),
+                credit_limit=_none_if_blank(request.POST.get("credit_limit")),
+                remarks=_none_if_blank(request.POST.get("remarks")),
+                cheque_print_name=_none_if_blank(request.POST.get("cheque_print_name")),
+                is_active=request.POST.get("is_active") == "on",
+                created_by=request.user.username if request.user.is_authenticated else "system",
+            )
+        else:
+            supplier.supplier_code = request.POST.get("supplier_code")
+            supplier.supplier_name = request.POST.get("supplier_name")
+            supplier.address1 = _none_if_blank(request.POST.get("address1"))
+            supplier.address2 = _none_if_blank(request.POST.get("address2"))
+            supplier.address3 = _none_if_blank(request.POST.get("address3"))
+            supplier.country = _none_if_blank(request.POST.get("country"))
+            supplier.postal = _none_if_blank(request.POST.get("postal"))
+            supplier.phone_number = _none_if_blank(request.POST.get("phone_number"))
+            supplier.hand_phone_number = _none_if_blank(request.POST.get("hand_phone_number"))
+            supplier.fax_no = _none_if_blank(request.POST.get("fax_no"))
+            supplier.email = _none_if_blank(request.POST.get("email"))
+            supplier.website = _none_if_blank(request.POST.get("website"))
+            supplier.company_reg_no = _none_if_blank(request.POST.get("company_reg_no"))
+            supplier.tax = _none_if_blank(request.POST.get("tax"))
+            supplier.price_group = _none_if_blank(request.POST.get("price_group"))
+            supplier.contact_type = _none_if_blank(request.POST.get("contact_type"))
+            supplier.area = _none_if_blank(request.POST.get("area"))
+            supplier.currency = _none_if_blank(request.POST.get("currency"))
+            supplier.terms = _none_if_blank(request.POST.get("terms"))
+            supplier.credit_limit = _none_if_blank(request.POST.get("credit_limit"))
+            supplier.remarks = _none_if_blank(request.POST.get("remarks"))
+            supplier.cheque_print_name = _none_if_blank(request.POST.get("cheque_print_name"))
+            supplier.is_active = request.POST.get("is_active") == "on"
+            supplier.save()
+
+            SupplierLogin.objects.filter(supplier=supplier).delete()
+            SupplierContact.objects.filter(supplier=supplier).delete()
+
+        login_username = _none_if_blank(request.POST.get("login_username"))
+        login_password = _none_if_blank(request.POST.get("login_password"))
+        if login_username and login_password:
+            SupplierLogin.objects.create(
+                supplier=supplier,
+                username=login_username,
+                password=login_password,
+                is_active=True,
+            )
+
+        first_contact_name = ""
+        for row in contacts:
+            contact_person = _none_if_blank(row.get("contact_person"))
+            if not contact_person:
+                continue
+            if not first_contact_name:
+                first_contact_name = contact_person
+            SupplierContact.objects.create(
+                supplier=supplier,
+                contact_person=contact_person,
+                email=_none_if_blank(row.get("email")),
+                phone_no=_none_if_blank(row.get("phone_no")),
+                handphone_no=_none_if_blank(row.get("handphone_no")),
+                fax_no=_none_if_blank(row.get("fax_no")),
+            )
+
+        supplier_code = _none_if_blank(request.POST.get("supplier_code")) or ""
+        supplier_name = _none_if_blank(request.POST.get("supplier_name")) or ""
+        if supplier_code:
+            SupplierMaster.objects.update_or_create(
+                code=supplier_code,
+                defaults={
+                    "name": supplier_name,
+                    "contact": first_contact_name,
+                    "address": _none_if_blank(request.POST.get("address1")) or "",
+                    "country": _none_if_blank(request.POST.get("country")) or "",
+                    "currency": _none_if_blank(request.POST.get("currency")) or "INR",
+                    "payment_terms": _none_if_blank(request.POST.get("terms")) or "",
+                },
+            )
+
+
+def add_supplier(request):
+
+    if request.method == "POST":
+        _save_supplier(request)
+        return redirect("supplier_list")
+
+    taxes = TaxMaster.objects.filter(is_active=True).order_by("tax_name")
+    terms = TermsMaster.objects.filter(is_active=True).order_by("term_name")
+    currencies = CurrencyMaster.objects.filter(is_active=True).order_by("currency_name")
+    return render_page(
+        request,
+        "supplier_new.html",
+        "New/Edit Supplier",
+        "supplier_add",
+        inventory_open=True,
+        master_open=True,
+        master_section=True,
+        extra={
+            "taxes": taxes,
+            "terms": terms,
+            "currencies": currencies,
+            "form_action": reverse("add_supplier"),
+        },
+    )
+
+
+def edit_supplier(request, supplier_id):
+    supplier = Supplier.objects.filter(id=supplier_id).first()
+    if not supplier:
+        return redirect("supplier_list")
+
+    if request.method == "POST":
+        _save_supplier(request, supplier=supplier)
+        return redirect("supplier_list")
+
+    taxes = TaxMaster.objects.filter(is_active=True).order_by("tax_name")
+    terms = TermsMaster.objects.filter(is_active=True).order_by("term_name")
+    currencies = CurrencyMaster.objects.filter(is_active=True).order_by("currency_name")
+    login = SupplierLogin.objects.filter(supplier=supplier).first()
+    contacts = list(
+        SupplierContact.objects.filter(supplier=supplier).values(
+            "contact_person", "email", "phone_no", "handphone_no", "fax_no"
+        )
+    )
+    return render_page(
+        request,
+        "supplier_new.html",
+        "New/Edit Supplier",
+        "supplier_add",
+        inventory_open=True,
+        master_open=True,
+        master_section=True,
+        extra={
+            "taxes": taxes,
+            "terms": terms,
+            "currencies": currencies,
+            "supplier": supplier,
+            "login": login,
+            "contacts_json": json.dumps(contacts),
+            "form_action": reverse("edit_supplier", args=[supplier_id]),
+        },
+    )
+
+
+def tax_list(request):
+    status_filter = (request.GET.get("status") or "").strip().lower()
+    taxes = TaxMaster.objects.order_by("tax_name")
+    if status_filter in {"active", "inactive"}:
+        taxes = taxes.filter(is_active=(status_filter == "active"))
+
+    return render_page(
+        request,
+        "tax_list.html",
+        "Tax Management",
+        "tax_list",
+        inventory_open=True,
+        master_open=True,
+        master_section=True,
+        extra={"taxes": taxes, "status_filter": status_filter},
+    )
+
+
+def add_tax(request):
+
+    if request.method == "POST":
+        TaxMaster.objects.create(
+            tax_name=request.POST.get("tax_name"),
+            tax_type=_none_if_blank(request.POST.get("tax_type")),
+            tax_code=_none_if_blank(request.POST.get("tax_code")),
+            tax_for=_none_if_blank(request.POST.get("tax_for")) or "Both",
+            tax_percentage=_none_if_blank(request.POST.get("tax_percentage")) or 0,
+            sort_code=_none_if_blank(request.POST.get("sort_code")),
+            is_active=request.POST.get("is_active") == "on",
+            created_by=request.user.username if request.user.is_authenticated else "system",
+        )
+        return redirect("tax_list")
+
+    return render_page(
+        request,
+        "tax_new.html",
+        "Add/Edit Tax",
+        "tax_add",
+        inventory_open=True,
+        master_open=True,
+        master_section=True,
+        extra={"form_action": reverse("add_tax")},
+    )
+
+
+def edit_tax(request, tax_id):
+    tax = TaxMaster.objects.filter(id=tax_id).first()
+    if not tax:
+        return redirect("tax_list")
+
+    if request.method == "POST":
+        tax.tax_name = request.POST.get("tax_name")
+        tax.tax_type = _none_if_blank(request.POST.get("tax_type"))
+        tax.tax_code = _none_if_blank(request.POST.get("tax_code"))
+        tax.tax_for = _none_if_blank(request.POST.get("tax_for")) or "Both"
+        tax.tax_percentage = _none_if_blank(request.POST.get("tax_percentage")) or 0
+        tax.sort_code = _none_if_blank(request.POST.get("sort_code"))
+        tax.is_active = request.POST.get("is_active") == "on"
+        tax.save()
+        return redirect("tax_list")
+
+    return render_page(
+        request,
+        "tax_new.html",
+        "Add/Edit Tax",
+        "tax_add",
+        inventory_open=True,
+        master_open=True,
+        master_section=True,
+        extra={"tax": tax, "form_action": reverse("edit_tax", args=[tax_id])},
+    )
+
+
+def toggle_tax_active(request, tax_id):
+    if request.method != "POST":
+        return redirect("tax_list")
+
+    tax = TaxMaster.objects.filter(id=tax_id).first()
+    if not tax:
+        return redirect("tax_list")
+
+    tax.is_active = not tax.is_active
+    tax.save(update_fields=["is_active"])
+    return redirect("tax_list")
+
+
+def terms_list(request):
+    status_filter = (request.GET.get("status") or "").strip().lower()
+    terms = TermsMaster.objects.order_by("term_name")
+    if status_filter in {"active", "inactive"}:
+        terms = terms.filter(is_active=(status_filter == "active"))
+
+    return render_page(
+        request,
+        "terms_list.html",
+        "Terms Management",
+        "terms_list",
+        inventory_open=True,
+        master_open=True,
+        master_section=True,
+        extra={"terms": terms, "status_filter": status_filter},
+    )
+
+
+def add_terms(request):
+
+    if request.method == "POST":
+        TermsMaster.objects.create(
+            term_name=request.POST.get("term_name"),
+            no_of_days=request.POST.get("no_of_days") or 0,
+            is_active=request.POST.get("is_active") == "on",
+            created_by=request.user.username if request.user.is_authenticated else "system",
+        )
+        return redirect("terms_list")
+
+    return render_page(
+        request,
+        "terms_new.html",
+        "Add/Edit Terms",
+        "terms_add",
+        inventory_open=True,
+        master_open=True,
+        master_section=True,
+        extra={"form_action": reverse("add_terms")},
+    )
+
+
+def edit_terms(request, term_id):
+    term = TermsMaster.objects.filter(id=term_id).first()
+    if not term:
+        return redirect("terms_list")
+
+    if request.method == "POST":
+        term.term_name = request.POST.get("term_name")
+        term.no_of_days = request.POST.get("no_of_days") or 0
+        term.is_active = request.POST.get("is_active") == "on"
+        term.save()
+        return redirect("terms_list")
+
+    return render_page(
+        request,
+        "terms_new.html",
+        "Add/Edit Terms",
+        "terms_add",
+        inventory_open=True,
+        master_open=True,
+        master_section=True,
+        extra={"term": term, "form_action": reverse("edit_terms", args=[term_id])},
+    )
+
+
+def toggle_terms_active(request, term_id):
+    if request.method != "POST":
+        return redirect("terms_list")
+
+    term = TermsMaster.objects.filter(id=term_id).first()
+    if not term:
+        return redirect("terms_list")
+
+    term.is_active = not term.is_active
+    term.save(update_fields=["is_active"])
+    return redirect("terms_list")
+
+
+def currency_list(request):
+    status_filter = (request.GET.get("status") or "").strip().lower()
+    currencies = CurrencyMaster.objects.order_by("currency_name")
+    if status_filter in {"active", "inactive"}:
+        currencies = currencies.filter(is_active=(status_filter == "active"))
+
+    return render_page(
+        request,
+        "currency_list.html",
+        "Currency Management",
+        "currency_list",
+        inventory_open=True,
+        master_open=True,
+        master_section=True,
+        extra={"currencies": currencies, "status_filter": status_filter},
+    )
+
+
+def add_currency(request):
+
+    if request.method == "POST":
+        CurrencyMaster.objects.create(
+            currency_code=request.POST.get("currency_code"),
+            currency_name=request.POST.get("currency_name"),
+            currency_rate=request.POST.get("currency_rate") or 1,
+            is_active=request.POST.get("is_active") == "on",
+            created_by=request.user.username if request.user.is_authenticated else "system",
+        )
+        return redirect("currency_list")
+
+    return render_page(
+        request,
+        "currency_new.html",
+        "Add/Edit Currency",
+        "currency_add",
+        inventory_open=True,
+        master_open=True,
+        master_section=True,
+        extra={"form_action": reverse("add_currency")},
+    )
+
+
+def edit_currency(request, currency_id):
+    currency = CurrencyMaster.objects.filter(id=currency_id).first()
+    if not currency:
+        return redirect("currency_list")
+
+    if request.method == "POST":
+        currency.currency_code = request.POST.get("currency_code")
+        currency.currency_name = request.POST.get("currency_name")
+        currency.currency_rate = request.POST.get("currency_rate") or 1
+        currency.is_active = request.POST.get("is_active") == "on"
+        currency.save()
+        return redirect("currency_list")
+
+    return render_page(
+        request,
+        "currency_new.html",
+        "Add/Edit Currency",
+        "currency_add",
+        inventory_open=True,
+        master_open=True,
+        master_section=True,
+        extra={
+            "currency": currency,
+            "form_action": reverse("edit_currency", args=[currency_id]),
+        },
+    )
+
+
+def toggle_currency_active(request, currency_id):
+    if request.method != "POST":
+        return redirect("currency_list")
+
+    currency = CurrencyMaster.objects.filter(id=currency_id).first()
+    if not currency:
+        return redirect("currency_list")
+
+    currency.is_active = not currency.is_active
+    currency.save(update_fields=["is_active"])
+    return redirect("currency_list")
+
+
+# def add_customer(request):
+
+#     if request.method == "POST":
+
+#         Customer.objects.create(
+#             customer_code=request.POST.get("customer_code"),
+#             customer_name=request.POST.get("customer_name"),
+#             address=request.POST.get("address"),
+#             phone_no=request.POST.get("phone_no"),
+#             email=request.POST.get("email"),
+#             created_by=request.user.username
+#         )
+
+#         return redirect("customer_list")
+
+#     return render(request, "customer_new.html")
+

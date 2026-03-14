@@ -37,7 +37,40 @@
           </button>
 
           <div class="submenu {% if inventory_open %}open{% endif %}" data-submenu>
-            <a class="submenu-link {% if active_page == 'master' %}active{% endif %}" href="{% url 'master' %}">Master <span>&#8250;</span></a>
+            <!-- MASTER -->
+            <div class="submenu-group {% if master_open %}open{% endif %}" data-menu-group>
+              <button class="submenu-trigger {% if master_section %}active{% endif %}" type="button" data-menu-trigger>
+                <span>Master</span>
+                <span class="menu-chevron">&#8250;</span>
+              </button>
+
+              <div class="submenu nested-submenu {% if master_open %}open{% endif %}" data-submenu>
+
+                <a class="submenu-link {% if active_page == 'customer_list' %}active{% endif %}"
+                  href="{% url 'customer_list' %}">
+                  Customer
+                </a>
+                <a class="submenu-link {% if active_page == 'supplier_list' %}active{% endif %}"
+                  href="{% url 'supplier_list' %}">
+                  Supplier
+                </a>
+                <a class="submenu-link {% if active_page == 'tax_list' %}active{% endif %}"
+                  href="{% url 'tax_list' %}">
+                  Tax
+                </a>
+                <a class="submenu-link {% if active_page == 'terms_list' %}active{% endif %}"
+                  href="{% url 'terms_list' %}">
+                  Terms
+                </a>
+                <a class="submenu-link {% if active_page == 'currency_list' %}active{% endif %}"
+                  href="{% url 'currency_list' %}">
+                  Currency
+                </a>
+
+              </div>
+            </div>
+
+            <!-- <a class="submenu-link {% if active_page == 'master' %}active{% endif %}" href="{% url 'master' %}">Master <span>&#8250;</span></a> -->
             <a class="submenu-link {% if active_page == 'product' %}active{% endif %}" href="{% url 'product' %}">Product <span>&#8250;</span></a>
             <div class="submenu-group {% if purchase_open %}open{% endif %}" data-menu-group>
               <button class="submenu-trigger {% if purchase_section %}active{% endif %}" type="button" data-menu-trigger>

@@ -529,3 +529,219 @@ class PurchasePayment(models.Model):
 
     class Meta:
         db_table = "purchase_payments"
+
+#####Customer#####
+from django.db import models
+
+
+class Customer(models.Model):
+
+    customer_code = models.CharField(max_length=20, unique=True)
+    customer_name = models.CharField(max_length=200)
+
+    # Additional Tab
+    address1 = models.CharField(max_length=200, blank=True, null=True)
+    address2 = models.CharField(max_length=200, blank=True, null=True)
+    address3 = models.CharField(max_length=200, blank=True, null=True)
+
+    country = models.CharField(max_length=100, blank=True, null=True)
+    postal = models.CharField(max_length=20, blank=True, null=True)
+
+    phone_number = models.CharField(max_length=20, blank=True, null=True)
+    hand_phone_number = models.CharField(max_length=20, blank=True, null=True)
+    fax_no = models.CharField(max_length=20, blank=True, null=True)
+
+    email = models.EmailField(blank=True, null=True)
+    website = models.CharField(max_length=200, blank=True, null=True)
+
+    company_reg_no = models.CharField(max_length=100, blank=True, null=True)
+
+    tax = models.CharField(max_length=100, blank=True, null=True)
+    price_group = models.CharField(max_length=100, blank=True, null=True)
+    contact_type = models.CharField(max_length=100, blank=True, null=True)
+    area = models.CharField(max_length=100, blank=True, null=True)
+    currency = models.CharField(max_length=50, blank=True, null=True)
+    terms = models.CharField(max_length=100, blank=True, null=True)
+    credit_limit = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+
+    remarks = models.TextField(blank=True, null=True)
+    cheque_print_name = models.CharField(max_length=200, blank=True, null=True)
+
+    is_active = models.BooleanField(default=True)
+
+    created_by = models.CharField(max_length=100)
+
+    def __str__(self):
+        return self.customer_name
+    
+class CustomerLogin(models.Model):
+
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
+
+    username = models.CharField(max_length=100)
+    password = models.CharField(max_length=100)
+
+    is_active = models.BooleanField(default=True)
+
+class CustomerContact(models.Model):
+
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
+
+    contact_person = models.CharField(max_length=200)
+    email = models.EmailField(blank=True, null=True)
+
+    phone_no = models.CharField(max_length=20, blank=True, null=True)
+    handphone_no = models.CharField(max_length=20, blank=True, null=True)
+
+    fax_no = models.CharField(max_length=20, blank=True, null=True)
+    designation = models.CharField(max_length=100, blank=True, null=True)
+
+class CustomerShipping(models.Model):
+
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
+
+    delivery_name = models.CharField(max_length=200)
+
+    delivery_address1 = models.CharField(max_length=200)
+    delivery_address2 = models.CharField(max_length=200, blank=True, null=True)
+    delivery_address3 = models.CharField(max_length=200, blank=True, null=True)
+
+    phone_no = models.CharField(max_length=20, blank=True, null=True)
+    handphone_no = models.CharField(max_length=20, blank=True, null=True)
+
+    fax_no = models.CharField(max_length=20, blank=True, null=True)
+
+    country = models.CharField(max_length=100)
+    postal = models.CharField(max_length=20)
+
+    email = models.EmailField(blank=True, null=True)
+
+    attention = models.CharField(max_length=200, blank=True, null=True)
+
+    default_load_invoice = models.BooleanField(default=False)
+
+class CustomerSalesman(models.Model):
+
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
+
+    salesman_name = models.CharField(max_length=200)
+
+
+class Supplier(models.Model):
+    supplier_code = models.CharField(max_length=20, unique=True)
+    supplier_name = models.CharField(max_length=200)
+
+    # Additional Tab
+    address1 = models.CharField(max_length=200, blank=True, null=True)
+    address2 = models.CharField(max_length=200, blank=True, null=True)
+    address3 = models.CharField(max_length=200, blank=True, null=True)
+
+    country = models.CharField(max_length=100, blank=True, null=True)
+    postal = models.CharField(max_length=20, blank=True, null=True)
+
+    phone_number = models.CharField(max_length=20, blank=True, null=True)
+    hand_phone_number = models.CharField(max_length=20, blank=True, null=True)
+    fax_no = models.CharField(max_length=20, blank=True, null=True)
+
+    email = models.EmailField(blank=True, null=True)
+    website = models.CharField(max_length=200, blank=True, null=True)
+
+    company_reg_no = models.CharField(max_length=100, blank=True, null=True)
+
+    tax = models.CharField(max_length=100, blank=True, null=True)
+    price_group = models.CharField(max_length=100, blank=True, null=True)
+    contact_type = models.CharField(max_length=100, blank=True, null=True)
+    area = models.CharField(max_length=100, blank=True, null=True)
+    currency = models.CharField(max_length=50, blank=True, null=True)
+    terms = models.CharField(max_length=100, blank=True, null=True)
+    credit_limit = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+
+    remarks = models.TextField(blank=True, null=True)
+    cheque_print_name = models.CharField(max_length=200, blank=True, null=True)
+
+    is_active = models.BooleanField(default=True)
+
+    created_by = models.CharField(max_length=100)
+
+    def __str__(self):
+        return self.supplier_name
+
+
+class SupplierLogin(models.Model):
+    supplier = models.ForeignKey(Supplier, on_delete=models.CASCADE)
+
+    username = models.CharField(max_length=100)
+    password = models.CharField(max_length=100)
+
+    is_active = models.BooleanField(default=True)
+
+
+class SupplierContact(models.Model):
+    supplier = models.ForeignKey(Supplier, on_delete=models.CASCADE)
+
+    contact_person = models.CharField(max_length=200)
+    email = models.EmailField(blank=True, null=True)
+
+    phone_no = models.CharField(max_length=20, blank=True, null=True)
+    handphone_no = models.CharField(max_length=20, blank=True, null=True)
+
+    fax_no = models.CharField(max_length=20, blank=True, null=True)
+
+
+class TaxMaster(models.Model):
+    tax_name = models.CharField(max_length=200, unique=True)
+    tax_type = models.CharField(max_length=100, blank=True, null=True)
+    tax_code = models.CharField(max_length=100, blank=True, null=True)
+    tax_for = models.CharField(max_length=50, default="Both")
+    tax_percentage = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    sort_code = models.CharField(max_length=50, blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+    created_by = models.CharField(max_length=100)
+    created_date = models.DateField(auto_now_add=True)
+
+    class Meta:
+        db_table = "tax_master"
+
+    def __str__(self):
+        return self.tax_name
+
+
+class TermsMaster(models.Model):
+    term_name = models.CharField(max_length=200, unique=True)
+    no_of_days = models.IntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    created_by = models.CharField(max_length=100)
+    created_date = models.DateField(auto_now_add=True)
+
+    class Meta:
+        db_table = "terms_master"
+
+    def __str__(self):
+        return self.term_name
+
+
+class CurrencyMaster(models.Model):
+    currency_code = models.CharField(max_length=20, unique=True)
+    currency_name = models.CharField(max_length=200)
+    currency_rate = models.DecimalField(max_digits=12, decimal_places=4, default=1)
+    is_active = models.BooleanField(default=True)
+    created_by = models.CharField(max_length=100)
+    created_date = models.DateField(auto_now_add=True)
+
+    class Meta:
+        db_table = "currency_master"
+
+    def __str__(self):
+        return self.currency_name
+
+
+# class Customer(models.Model):
+#     customer_code = models.CharField(max_length=20, unique=True)
+#     customer_name = models.CharField(max_length=200)
+#     address = models.TextField(blank=True, null=True)
+#     phone_no = models.CharField(max_length=20, blank=True, null=True)
+#     email = models.EmailField(blank=True, null=True)
+#     created_by = models.CharField(max_length=100)
+
+#     def __str__(self):
+#         return self.customer_name
