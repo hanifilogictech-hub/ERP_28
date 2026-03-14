@@ -735,6 +735,72 @@ class CurrencyMaster(models.Model):
         return self.currency_name
 
 
+class PaymodeMaster(models.Model):
+    paymode_name = models.CharField(max_length=200, unique=True)
+    sort_order = models.IntegerField(default=0)
+    remarks = models.CharField(max_length=255, blank=True)
+    payment_type = models.CharField(max_length=80, blank=True)
+    show_back_office = models.BooleanField(default=True)
+    show_ecommerce = models.BooleanField(default=False)
+    need_reference_no = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True)
+    locations = models.TextField(blank=True)
+    created_by = models.CharField(max_length=100)
+    created_date = models.DateField(auto_now_add=True)
+    modified_date = models.DateField(auto_now=True)
+
+    class Meta:
+        db_table = "paymode_master"
+
+    def __str__(self):
+        return self.paymode_name
+
+
+class InvoiceChargesDiscountMaster(models.Model):
+    charge_discount_name = models.CharField(max_length=200, unique=True)
+    charge_discount_type = models.CharField(max_length=50)
+    apply_for = models.CharField(max_length=50, blank=True)
+    is_active = models.BooleanField(default=True)
+    created_by = models.CharField(max_length=100)
+    created_date = models.DateField(auto_now_add=True)
+    modified_date = models.DateField(auto_now=True)
+
+    class Meta:
+        db_table = "invoice_charges_discounts_master"
+
+    def __str__(self):
+        return self.charge_discount_name
+
+
+class StockAdjustmentTypeMaster(models.Model):
+    adjustment_type_name = models.CharField(max_length=200, unique=True)
+    sort_order = models.IntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    created_by = models.CharField(max_length=100)
+    created_date = models.DateField(auto_now_add=True)
+    modified_date = models.DateField(auto_now=True)
+
+    class Meta:
+        db_table = "stock_adjustment_type_master"
+
+    def __str__(self):
+        return self.adjustment_type_name
+
+
+class PriceGroupMaster(models.Model):
+    group_name = models.CharField(max_length=200, unique=True)
+    is_active = models.BooleanField(default=True)
+    created_by = models.CharField(max_length=100)
+    created_date = models.DateField(auto_now_add=True)
+    modified_date = models.DateField(auto_now=True)
+
+    class Meta:
+        db_table = "price_group_master"
+
+    def __str__(self):
+        return self.group_name
+
+
 # class Customer(models.Model):
 #     customer_code = models.CharField(max_length=20, unique=True)
 #     customer_name = models.CharField(max_length=200)

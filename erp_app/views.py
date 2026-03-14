@@ -63,6 +63,10 @@ from .models import (
     TaxMaster,
     TermsMaster,
     CurrencyMaster,
+    PaymodeMaster,
+    InvoiceChargesDiscountMaster,
+    StockAdjustmentTypeMaster,
+    PriceGroupMaster,
     SupplierLedgerEntry,
     SupplierMaster,
     WarehouseMaster,
@@ -3622,6 +3626,345 @@ def toggle_currency_active(request, currency_id):
     currency.is_active = not currency.is_active
     currency.save(update_fields=["is_active"])
     return redirect("currency_list")
+
+
+def paymode_list(request):
+    paymodes = PaymodeMaster.objects.order_by("sort_order", "paymode_name")
+    return render_page(
+        request,
+        "paymode_list.html",
+        "Paymode Management",
+        "paymode_list",
+        inventory_open=True,
+        master_open=True,
+        master_section=True,
+        extra={"paymodes": paymodes},
+    )
+
+
+def add_paymode(request):
+    if request.method == "POST":
+        locations = request.POST.getlist("locations")
+        PaymodeMaster.objects.create(
+            paymode_name=request.POST.get("paymode_name"),
+            sort_order=int(request.POST.get("sort_order") or 0),
+            remarks=request.POST.get("remarks") or "",
+            payment_type=request.POST.get("payment_type") or "",
+            show_back_office=request.POST.get("show_back_office") == "on",
+            show_ecommerce=request.POST.get("show_ecommerce") == "on",
+            need_reference_no=request.POST.get("need_reference_no") == "on",
+            is_active=request.POST.get("is_active") == "on",
+            locations=",".join(locations),
+            created_by=request.user.username if request.user.is_authenticated else "system",
+        )
+        return redirect("paymode_list")
+
+    return render_page(
+        request,
+        "paymode_new.html",
+        "Add/Edit Paymode",
+        "paymode_add",
+        inventory_open=True,
+        master_open=True,
+        master_section=True,
+        extra={
+            "form_action": reverse("add_paymode"),
+            "locations": _stock_locations(),
+        },
+    )
+
+
+def edit_paymode(request, paymode_id):
+    paymode = PaymodeMaster.objects.filter(id=paymode_id).first()
+    if not paymode:
+        return redirect("paymode_list")
+
+    if request.method == "POST":
+        locations = request.POST.getlist("locations")
+        paymode.paymode_name = request.POST.get("paymode_name")
+        paymode.sort_order = int(request.POST.get("sort_order") or 0)
+        paymode.remarks = request.POST.get("remarks") or ""
+        paymode.payment_type = request.POST.get("payment_type") or ""
+        paymode.show_back_office = request.POST.get("show_back_office") == "on"
+        paymode.show_ecommerce = request.POST.get("show_ecommerce") == "on"
+        paymode.need_reference_no = request.POST.get("need_reference_no") == "on"
+        paymode.is_active = request.POST.get("is_active") == "on"
+        paymode.locations = ",".join(locations)
+        paymode.save()
+        return redirect("paymode_list")
+
+    selected_locations = set(
+        loc.strip() for loc in (paymode.locations or "").split(",") if loc.strip()
+    )
+    return render_page(
+        request,
+        "paymode_new.html",
+        "Add/Edit Paymode",
+        "paymode_add",
+        inventory_open=True,
+        master_open=True,
+        master_section=True,
+        extra={
+            "paymode": paymode,
+            "form_action": reverse("edit_paymode", args=[paymode_id]),
+            "locations": _stock_locations(),
+            "selected_locations": selected_locations,
+        },
+    )
+
+
+def toggle_paymode_active(request, paymode_id):
+    if request.method != "POST":
+        return redirect("paymode_list")
+
+    paymode = PaymodeMaster.objects.filter(id=paymode_id).first()
+    if not paymode:
+        return redirect("paymode_list")
+
+    paymode.is_active = not paymode.is_active
+    paymode.save(update_fields=["is_active"])
+    return redirect("paymode_list")
+
+
+def invoice_charges_discounts_list(request):
+    charge_types = ["Charge", "Discount"]
+    records = InvoiceChargesDiscountMaster.objects.order_by(
+        "charge_discount_type", "charge_discount_name"
+    )
+    return render_page(
+        request,
+        "invoice_charges_discounts_list.html",
+        "Invoice Charges / Discounts Management",
+        "invoice_charges_discounts_list",
+        inventory_open=True,
+        master_open=True,
+        master_section=True,
+        extra={"records": records, "charge_types": charge_types},
+    )
+
+
+def add_invoice_charges_discounts(request):
+    charge_types = ["Charge", "Discount"]
+    apply_for_options = ["Sales", "Purchase", "Both"]
+    if request.method == "POST":
+        InvoiceChargesDiscountMaster.objects.create(
+            charge_discount_name=request.POST.get("charge_discount_name"),
+            charge_discount_type=request.POST.get("charge_discount_type") or "",
+            apply_for=request.POST.get("apply_for") or "",
+            is_active=request.POST.get("is_active") == "on",
+            created_by=request.user.username if request.user.is_authenticated else "system",
+        )
+        return redirect("invoice_charges_discounts_list")
+
+    return render_page(
+        request,
+        "invoice_charges_discounts_new.html",
+        "Add/Edit Invoice Charges/Discounts",
+        "invoice_charges_discounts_add",
+        inventory_open=True,
+        master_open=True,
+        master_section=True,
+        extra={
+            "form_action": reverse("add_invoice_charges_discounts"),
+            "charge_types": charge_types,
+            "apply_for_options": apply_for_options,
+        },
+    )
+
+
+def edit_invoice_charges_discounts(request, record_id):
+    record = InvoiceChargesDiscountMaster.objects.filter(id=record_id).first()
+    if not record:
+        return redirect("invoice_charges_discounts_list")
+
+    charge_types = ["Charge", "Discount"]
+    apply_for_options = ["Sales", "Purchase", "Both"]
+    if request.method == "POST":
+        record.charge_discount_name = request.POST.get("charge_discount_name")
+        record.charge_discount_type = request.POST.get("charge_discount_type") or ""
+        record.apply_for = request.POST.get("apply_for") or ""
+        record.is_active = request.POST.get("is_active") == "on"
+        record.save()
+        return redirect("invoice_charges_discounts_list")
+
+    return render_page(
+        request,
+        "invoice_charges_discounts_new.html",
+        "Add/Edit Invoice Charges/Discounts",
+        "invoice_charges_discounts_add",
+        inventory_open=True,
+        master_open=True,
+        master_section=True,
+        extra={
+            "record": record,
+            "form_action": reverse("edit_invoice_charges_discounts", args=[record_id]),
+            "charge_types": charge_types,
+            "apply_for_options": apply_for_options,
+        },
+    )
+
+
+def toggle_invoice_charges_discounts_active(request, record_id):
+    if request.method != "POST":
+        return redirect("invoice_charges_discounts_list")
+
+    record = InvoiceChargesDiscountMaster.objects.filter(id=record_id).first()
+    if not record:
+        return redirect("invoice_charges_discounts_list")
+
+    record.is_active = not record.is_active
+    record.save(update_fields=["is_active"])
+    return redirect("invoice_charges_discounts_list")
+
+
+def stock_adjustment_type_list(request):
+    records = StockAdjustmentTypeMaster.objects.order_by("sort_order", "adjustment_type_name")
+    return render_page(
+        request,
+        "stock_adjustment_type_list.html",
+        "Stock Adjustment Type Management",
+        "stock_adjustment_type_list",
+        inventory_open=True,
+        master_open=True,
+        master_section=True,
+        extra={"records": records},
+    )
+
+
+def add_stock_adjustment_type(request):
+    if request.method == "POST":
+        StockAdjustmentTypeMaster.objects.create(
+            adjustment_type_name=request.POST.get("adjustment_type_name"),
+            sort_order=int(request.POST.get("sort_order") or 0),
+            is_active=request.POST.get("is_active") == "on",
+            created_by=request.user.username if request.user.is_authenticated else "system",
+        )
+        return redirect("stock_adjustment_type_list")
+
+    return render_page(
+        request,
+        "stock_adjustment_type_new.html",
+        "Add/Edit Adjustment Type",
+        "stock_adjustment_type_add",
+        inventory_open=True,
+        master_open=True,
+        master_section=True,
+        extra={"form_action": reverse("add_stock_adjustment_type")},
+    )
+
+
+def edit_stock_adjustment_type(request, record_id):
+    record = StockAdjustmentTypeMaster.objects.filter(id=record_id).first()
+    if not record:
+        return redirect("stock_adjustment_type_list")
+
+    if request.method == "POST":
+        record.adjustment_type_name = request.POST.get("adjustment_type_name")
+        record.sort_order = int(request.POST.get("sort_order") or 0)
+        record.is_active = request.POST.get("is_active") == "on"
+        record.save()
+        return redirect("stock_adjustment_type_list")
+
+    return render_page(
+        request,
+        "stock_adjustment_type_new.html",
+        "Add/Edit Adjustment Type",
+        "stock_adjustment_type_add",
+        inventory_open=True,
+        master_open=True,
+        master_section=True,
+        extra={
+            "record": record,
+            "form_action": reverse("edit_stock_adjustment_type", args=[record_id]),
+        },
+    )
+
+
+def toggle_stock_adjustment_type_active(request, record_id):
+    if request.method != "POST":
+        return redirect("stock_adjustment_type_list")
+
+    record = StockAdjustmentTypeMaster.objects.filter(id=record_id).first()
+    if not record:
+        return redirect("stock_adjustment_type_list")
+
+    record.is_active = not record.is_active
+    record.save(update_fields=["is_active"])
+    return redirect("stock_adjustment_type_list")
+
+
+def price_group_list(request):
+    records = PriceGroupMaster.objects.order_by("group_name")
+    return render_page(
+        request,
+        "price_group_list.html",
+        "Price Group Management",
+        "price_group_list",
+        inventory_open=True,
+        master_open=True,
+        master_section=True,
+        extra={"records": records},
+    )
+
+
+def add_price_group(request):
+    if request.method == "POST":
+        PriceGroupMaster.objects.create(
+            group_name=request.POST.get("group_name"),
+            is_active=request.POST.get("is_active") == "on",
+            created_by=request.user.username if request.user.is_authenticated else "system",
+        )
+        return redirect("price_group_list")
+
+    return render_page(
+        request,
+        "price_group_new.html",
+        "Add/Edit Contact Group",
+        "price_group_add",
+        inventory_open=True,
+        master_open=True,
+        master_section=True,
+        extra={"form_action": reverse("add_price_group")},
+    )
+
+
+def edit_price_group(request, record_id):
+    record = PriceGroupMaster.objects.filter(id=record_id).first()
+    if not record:
+        return redirect("price_group_list")
+
+    if request.method == "POST":
+        record.group_name = request.POST.get("group_name")
+        record.is_active = request.POST.get("is_active") == "on"
+        record.save()
+        return redirect("price_group_list")
+
+    return render_page(
+        request,
+        "price_group_new.html",
+        "Add/Edit Contact Group",
+        "price_group_add",
+        inventory_open=True,
+        master_open=True,
+        master_section=True,
+        extra={
+            "record": record,
+            "form_action": reverse("edit_price_group", args=[record_id]),
+        },
+    )
+
+
+def toggle_price_group_active(request, record_id):
+    if request.method != "POST":
+        return redirect("price_group_list")
+
+    record = PriceGroupMaster.objects.filter(id=record_id).first()
+    if not record:
+        return redirect("price_group_list")
+
+    record.is_active = not record.is_active
+    record.save(update_fields=["is_active"])
+    return redirect("price_group_list")
 
 
 # def add_customer(request):

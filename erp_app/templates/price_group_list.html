@@ -1,0 +1,123 @@
+{% extends "base_layout.html" %}
+{% load static %}
+
+{% block page_heading %}
+<div style="display:flex; justify-content:space-between; align-items:center;">
+  <h1 style="margin:0;">Contact Group Management</h1>
+</div>
+{% endblock %}
+
+{% block content %}
+<div style="background:#eef1f5; padding:18px; border:1px solid #d4d9e2; border-radius:6px;">
+  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; gap:16px; flex-wrap:wrap;">
+    <a href="{% url 'add_price_group' %}"
+       style="
+        background:#1a7edb;
+        padding:10px 22px;
+        color:white;
+        text-decoration:none;
+        border-radius:22px;
+        font-weight:600;
+       ">
+      Add New(+)
+    </a>
+    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+      <input id="priceGroupSearch" type="text" placeholder="Search Contact Group..." style="width:340px; padding:8px 10px; border:1px solid #ccd2dc;">
+      <button type="button" title="Filter" style="background:transparent; border:0; font-size:14px; font-weight:700; color:#1a5bb8; cursor:pointer;">Filter</button>
+      <button type="button" id="priceGroupSearchBtn" style="background:#ffffff; border:1px solid #ccd2dc; padding:8px 12px; font-weight:600;">
+        <span style="font-size:16px;">&#128269;</span>
+      </button>
+    </div>
+  </div>
+
+  <div style="background:#fff; border:1px solid #d4d9e2; border-radius:6px; overflow:hidden;">
+    <table width="100%" cellpadding="8" cellspacing="0" style="border-collapse:collapse;">
+      <thead style="background:#f7f7f9;">
+        <tr>
+          <th style="width:80px;">Action</th>
+          <th>Group Name</th>
+          <th>Status</th>
+          <th>Created User</th>
+          <th>Modified On</th>
+        </tr>
+      </thead>
+      <tbody id="priceGroupTableBody">
+        {% for r in records %}
+        <tr style="background:#f6f2f2;">
+          <td style="text-align:center;">
+            <button type="button"
+                    class="toggle-pricegroup-btn"
+                    data-id="{{ r.id }}"
+                    data-active="{{ r.is_active|yesno:'1,0' }}"
+                    style="border:0; background:transparent; cursor:pointer; font-size:18px;">
+              &#128465;
+            </button>
+          </td>
+          <td style="color:#1a5bb8; font-weight:600;">
+            <a href="{% url 'edit_price_group' r.id %}" style="color:#1a5bb8; font-weight:600; text-decoration:none;">
+              {{ r.group_name }}
+            </a>
+          </td>
+          <td>{{ r.is_active|yesno:"Active,Inactive" }}</td>
+          <td>{{ r.created_by }}</td>
+          <td>{{ r.modified_date|date:"d/m/Y" }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="5" style="text-align:center; padding:14px;">No Contact Groups Found</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div style="margin-top:14px; font-weight:600; display:flex; align-items:center; justify-content:space-between;">
+    <span>Total Records : {{ records|length }}</span>
+    <div>
+      <button type="button" style="border:0; background:#ffffff; padding:6px 12px; border-radius:16px; color:#8d95a6; font-weight:600; margin-right:6px;">PREVIOUS</button>
+      <button type="button" style="border:0; background:#7a3fc1; padding:6px 12px; border-radius:999px; color:#ffffff; font-weight:700; margin-right:6px;">1</button>
+      <button type="button" style="border:0; background:#ffffff; padding:6px 12px; border-radius:16px; color:#8d95a6; font-weight:600;">NEXT</button>
+    </div>
+  </div>
+</div>
+
+<form id="priceGroupToggleForm" method="POST" style="display:none;">
+  {% csrf_token %}
+</form>
+
+<script>
+  (function () {
+    var searchInput = document.getElementById("priceGroupSearch");
+    var searchBtn = document.getElementById("priceGroupSearchBtn");
+    var tableBody = document.getElementById("priceGroupTableBody");
+    var toggleForm = document.getElementById("priceGroupToggleForm");
+
+    function doFilter() {
+      var text = (searchInput.value || "").trim().toLowerCase();
+      var rows = tableBody.querySelectorAll("tr");
+      rows.forEach(function (row) {
+        var rowText = row.textContent.toLowerCase();
+        row.style.display = !text || rowText.indexOf(text) > -1 ? "" : "none";
+      });
+    }
+
+    if (searchBtn) searchBtn.addEventListener("click", doFilter);
+    if (searchInput) searchInput.addEventListener("keyup", function (evt) {
+      if (evt.key === "Enter") doFilter();
+    });
+
+    document.querySelectorAll(".toggle-pricegroup-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var id = btn.getAttribute("data-id");
+        var isActive = btn.getAttribute("data-active") === "1";
+        var msg = isActive ? "Do you want to inactive this?" : "Do you want to active this?";
+        if (!window.confirm(msg)) return;
+        var url = "{% url 'price_group_toggle' 0 %}".replace("/0/", "/" + id + "/");
+        toggleForm.setAttribute("action", url);
+        toggleForm.submit();
+      });
+    });
+  })();
+</script>
+{% endblock %}
+

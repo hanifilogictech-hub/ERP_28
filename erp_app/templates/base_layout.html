@@ -66,6 +66,22 @@
                   href="{% url 'currency_list' %}">
                   Currency
                 </a>
+                <a class="submenu-link {% if active_page == 'paymode_list' %}active{% endif %}"
+                  href="{% url 'paymode_list' %}">
+                  Paymode
+                </a>
+                <a class="submenu-link {% if active_page == 'invoice_charges_discounts_list' %}active{% endif %}"
+                  href="{% url 'invoice_charges_discounts_list' %}">
+                  Invoice Charges Discounts
+                </a>
+                <a class="submenu-link {% if active_page == 'stock_adjustment_type_list' %}active{% endif %}"
+                  href="{% url 'stock_adjustment_type_list' %}">
+                  Stock Adjustment Types
+                </a>
+                <a class="submenu-link {% if active_page == 'price_group_list' %}active{% endif %}"
+                  href="{% url 'price_group_list' %}">
+                  Price Group
+                </a>
 
               </div>
             </div>

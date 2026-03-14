@@ -1,0 +1,111 @@
+{% extends "dashboard.html" %}
+{% load static %}
+
+{% block page_heading %}
+<div style="display:flex; justify-content:space-between; align-items:center;">
+  <h1 style="margin:0;">Paymode Management</h1>
+</div>
+{% endblock %}
+
+{% block content %}
+<div style="background:#eef1f5; padding:18px; border:1px solid #d4d9e2; border-radius:6px;">
+  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+    <a href="{% url 'add_paymode' %}"
+       style="
+        background:#1a7edb;
+        padding:10px 22px;
+        color:white;
+        text-decoration:none;
+        border-radius:22px;
+        font-weight:600;
+       ">
+      Add New(+)
+    </a>
+    <div style="display:flex; align-items:center; gap:10px;">
+      <input id="paymodeSearch" type="text" placeholder="Search Paymode.." style="width:260px; padding:8px 10px; border:1px solid #ccd2dc;">
+      <button type="button" id="paymodeSearchBtn" style="background:#f2cd00; border:0; padding:8px 16px; font-weight:700; border-radius:18px;">Search</button>
+      <button type="button" title="Filter" style="background:transparent; border:0; font-size:14px; font-weight:700; color:#1a5bb8; cursor:pointer;">Filter</button>
+    </div>
+  </div>
+
+  <div style="background:#fff; border:1px solid #d4d9e2; border-radius:6px; overflow:hidden;">
+    <table width="100%" cellpadding="8" cellspacing="0" style="border-collapse:collapse;">
+      <thead style="background:#f7f7f9;">
+        <tr>
+          <th style="width:80px;">Action</th>
+          <th>PaymodeName</th>
+          <th>SortOrder</th>
+          <th>Remarks</th>
+          <th>Created User</th>
+          <th>Modified On</th>
+        </tr>
+      </thead>
+      <tbody id="paymodeTableBody">
+        {% for p in paymodes %}
+        <tr style="background:#f6f2f2;">
+          <td style="text-align:center;">
+            <button type="button"
+                    class="toggle-paymode-btn"
+                    data-id="{{ p.id }}"
+                    data-active="{{ p.is_active|yesno:'1,0' }}"
+                    style="border:0; background:transparent; cursor:pointer; font-size:18px;">
+              &#128465;
+            </button>
+          </td>
+          <td style="color:#1a5bb8; font-weight:600;"><a href="{% url 'edit_paymode' p.id %}" style="color:#1a5bb8; font-weight:600; text-decoration:none;">{{ p.paymode_name }}</a></td>
+          <td>{{ p.sort_order }}</td>
+          <td>{{ p.remarks }}</td>
+          <td>{{ p.created_by }}</td>
+          <td>{{ p.modified_date|date:"d/m/Y" }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" style="text-align:center; padding:14px;">No Paymodes Found</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div style="margin-top:14px; font-weight:600;">Total Records : {{ paymodes|length }}</div>
+</div>
+
+<form id="paymodeToggleForm" method="POST" style="display:none;">
+  {% csrf_token %}
+</form>
+
+<script>
+  (function () {
+    var searchInput = document.getElementById("paymodeSearch");
+    var searchBtn = document.getElementById("paymodeSearchBtn");
+    var tableBody = document.getElementById("paymodeTableBody");
+    var toggleForm = document.getElementById("paymodeToggleForm");
+
+    function doFilter() {
+      var text = (searchInput.value || "").trim().toLowerCase();
+      var rows = tableBody.querySelectorAll("tr");
+      rows.forEach(function (row) {
+        var rowText = row.textContent.toLowerCase();
+        row.style.display = !text || rowText.indexOf(text) > -1 ? "" : "none";
+      });
+    }
+
+    if (searchBtn) searchBtn.addEventListener("click", doFilter);
+    if (searchInput) searchInput.addEventListener("keyup", function (evt) {
+      if (evt.key === "Enter") doFilter();
+    });
+
+    document.querySelectorAll(".toggle-paymode-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var id = btn.getAttribute("data-id");
+        var isActive = btn.getAttribute("data-active") === "1";
+        var msg = isActive ? "Do you want to inactive this?" : "Do you want to active this?";
+        if (!window.confirm(msg)) return;
+        var url = "{% url 'paymode_toggle' 0 %}".replace("/0/", "/" + id + "/");
+        toggleForm.setAttribute("action", url);
+        toggleForm.submit();
+      });
+    });
+  })();
+</script>
+{% endblock %}

@@ -1,0 +1,131 @@
+{% extends "base_layout.html" %}
+{% load static %}
+
+{% block page_heading %}
+<div style="display:flex; justify-content:space-between; align-items:center;">
+  <h1 style="margin:0;">Invoice Charges / Discounts Management</h1>
+</div>
+{% endblock %}
+
+{% block content %}
+<div style="background:#eef1f5; padding:18px; border:1px solid #d4d9e2; border-radius:6px;">
+  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; gap:16px; flex-wrap:wrap;">
+    <a href="{% url 'add_invoice_charges_discounts' %}"
+       style="
+        background:#1a7edb;
+        padding:10px 22px;
+        color:white;
+        text-decoration:none;
+        border-radius:22px;
+        font-weight:600;
+       ">
+      Add New(+)
+    </a>
+    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+      <label style="font-weight:600;">Charges/Discount Type</label>
+      <select id="chargeTypeFilter" style="min-width:220px; padding:8px 10px; border:1px solid #ccd2dc;">
+        <option value="all">All</option>
+        {% for t in charge_types %}
+        <option value="{{ t|lower }}">{{ t }}</option>
+        {% endfor %}
+      </select>
+
+      <input id="chargeSearch" type="text" placeholder="Search Invoice Charges/Discounts.." style="width:280px; padding:8px 10px; border:1px solid #ccd2dc;">
+      <button type="button" title="Filter" style="background:transparent; border:0; font-size:14px; font-weight:700; color:#1a5bb8; cursor:pointer;">Filter</button>
+      <button type="button" id="chargeSearchBtn" style="background:#f2cd00; border:0; padding:8px 16px; font-weight:700; border-radius:18px;">Search</button>
+    </div>
+  </div>
+
+  <div style="background:#fff; border:1px solid #d4d9e2; border-radius:6px; overflow:hidden;">
+    <table width="100%" cellpadding="8" cellspacing="0" style="border-collapse:collapse;">
+      <thead style="background:#f7f7f9;">
+        <tr>
+          <th style="width:80px;">Action</th>
+          <th>Master Name</th>
+          <th>Type</th>
+          <th>Created User</th>
+        </tr>
+      </thead>
+      <tbody id="chargeTableBody">
+        {% for r in records %}
+        <tr style="background:#f6f2f2;" data-type="{{ r.charge_discount_type|lower }}">
+          <td style="text-align:center;">
+            <button type="button"
+                    class="toggle-charge-btn"
+                    data-id="{{ r.id }}"
+                    data-active="{{ r.is_active|yesno:'1,0' }}"
+                    style="border:0; background:transparent; cursor:pointer; font-size:18px;">
+              &#128465;
+            </button>
+          </td>
+          <td style="color:#1a5bb8; font-weight:600;">
+            <a href="{% url 'edit_invoice_charges_discounts' r.id %}" style="color:#1a5bb8; font-weight:600; text-decoration:none;">
+              {{ r.charge_discount_name }}
+            </a>
+          </td>
+          <td>{{ r.charge_discount_type }}</td>
+          <td>{{ r.created_by }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="4" style="text-align:center; padding:14px;">No Invoice Charges/Discounts Found</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div style="margin-top:14px; font-weight:600; display:flex; align-items:center; justify-content:space-between;">
+    <span>Total Records : {{ records|length }}</span>
+    <div>
+      <button type="button" style="border:0; background:#ffffff; padding:6px 12px; border-radius:16px; color:#8d95a6; font-weight:600; margin-right:6px;">PREVIOUS</button>
+      <button type="button" style="border:0; background:#ffffff; padding:6px 12px; border-radius:16px; color:#8d95a6; font-weight:600;">NEXT</button>
+    </div>
+  </div>
+</div>
+
+<form id="chargeToggleForm" method="POST" style="display:none;">
+  {% csrf_token %}
+</form>
+
+<script>
+  (function () {
+    var searchInput = document.getElementById("chargeSearch");
+    var searchBtn = document.getElementById("chargeSearchBtn");
+    var tableBody = document.getElementById("chargeTableBody");
+    var toggleForm = document.getElementById("chargeToggleForm");
+    var typeFilter = document.getElementById("chargeTypeFilter");
+
+    function doFilter() {
+      var text = (searchInput.value || "").trim().toLowerCase();
+      var typeValue = (typeFilter.value || "all").toLowerCase();
+      var rows = tableBody.querySelectorAll("tr");
+      rows.forEach(function (row) {
+        var rowText = row.textContent.toLowerCase();
+        var rowType = row.getAttribute("data-type") || "";
+        var typeOk = typeValue === "all" || rowType === typeValue;
+        var textOk = !text || rowText.indexOf(text) > -1;
+        row.style.display = typeOk && textOk ? "" : "none";
+      });
+    }
+
+    if (searchBtn) searchBtn.addEventListener("click", doFilter);
+    if (searchInput) searchInput.addEventListener("keyup", function (evt) {
+      if (evt.key === "Enter") doFilter();
+    });
+    if (typeFilter) typeFilter.addEventListener("change", doFilter);
+
+    document.querySelectorAll(".toggle-charge-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var id = btn.getAttribute("data-id");
+        var isActive = btn.getAttribute("data-active") === "1";
+        var msg = isActive ? "Do you want to inactive this?" : "Do you want to active this?";
+        if (!window.confirm(msg)) return;
+        var url = "{% url 'invoice_charges_discounts_toggle' 0 %}".replace("/0/", "/" + id + "/");
+        toggleForm.setAttribute("action", url);
+        toggleForm.submit();
+      });
+    });
+  })();
+</script>
+{% endblock %}

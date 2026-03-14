@@ -1,0 +1,84 @@
+{% extends "dashboard.html" %}
+{% load static %}
+
+{% block page_heading %}
+<h1>Add/Edit Paymode</h1>
+{% endblock %}
+
+{% block content %}
+<div style="background:#eef1f5; padding:18px; border:1px solid #d4d9e2; border-radius:6px;">
+  <form method="POST" action="{{ form_action }}" style="max-width:980px;">
+    {% csrf_token %}
+    <div style="display:grid; grid-template-columns: 220px 1fr; gap:12px 22px; align-items:center;">
+      <label>Paymode Name <span style="color:#c21a1a;">*</span></label>
+      <input type="text" name="paymode_name" placeholder="Enter Paymode Name" required value="{{ paymode.paymode_name|default:'' }}" style="border:1px solid #7ca4d9; padding:8px 10px;">
+
+      <label>Sort Order</label>
+      <input type="number" name="sort_order" placeholder="Enter Sort Order" value="{{ paymode.sort_order|default:'' }}" style="border:1px solid #c9ced6; padding:8px 10px;">
+
+      <label>Remarks</label>
+      <input type="text" name="remarks" placeholder="Enter Remarks" value="{{ paymode.remarks|default:'' }}" style="border:1px solid #c9ced6; padding:8px 10px;">
+
+      <label>Payment Type</label>
+      <select name="payment_type" style="border:1px solid #c9ced6; padding:8px 10px;">
+        <option value="">Select Payment Type</option>
+        <option value="Cash" {% if paymode.payment_type == "Cash" %}selected{% endif %}>Cash</option>
+        <option value="NETS" {% if paymode.payment_type == "NETS" %}selected{% endif %}>NETS</option>
+        <option value="Credit Card" {% if paymode.payment_type == "Credit Card" %}selected{% endif %}>Credit Card</option>
+        <option value="Bank Transfer" {% if paymode.payment_type == "Bank Transfer" %}selected{% endif %}>Bank Transfer</option>
+      </select>
+
+      <label></label>
+      <label style="display:flex; align-items:center; gap:10px; font-weight:600;">
+        <input type="checkbox" name="show_back_office" {% if paymode %}{% if paymode.show_back_office %}checked{% endif %}{% else %}checked{% endif %}> Show On Back Office
+      </label>
+
+      <label></label>
+      <label style="display:flex; align-items:center; gap:10px; font-weight:600;">
+        <input type="checkbox" name="show_ecommerce" {% if paymode %}{% if paymode.show_ecommerce %}checked{% endif %}{% endif %}> Show On eCommerce
+      </label>
+
+      <label></label>
+      <label style="display:flex; align-items:center; gap:10px; font-weight:600;">
+        <input type="checkbox" name="need_reference_no" {% if paymode %}{% if paymode.need_reference_no %}checked{% endif %}{% endif %}> Need Reference No
+      </label>
+
+      <label></label>
+      <label style="display:flex; align-items:center; gap:10px; font-weight:600;">
+        <input type="checkbox" name="is_active" {% if paymode %}{% if paymode.is_active %}checked{% endif %}{% else %}checked{% endif %}> IsActive
+      </label>
+
+      <label style="align-self:start;">Location</label>
+      <div style="border:1px solid #c9ced6; background:#f0f3f7; padding:10px 12px; max-width:260px; height:140px; overflow:auto;">
+        <label style="display:flex; align-items:center; gap:8px; font-weight:600; margin-bottom:8px;">
+          <input type="checkbox" id="paymodeUnselectAll"> UnSelect All
+        </label>
+        {% for loc in locations %}
+        <label style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+          <input type="checkbox" name="locations" value="{{ loc }}" {% if selected_locations %}{% if loc in selected_locations %}checked{% endif %}{% endif %}> {{ loc|upper }}
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div style="margin-top:22px; display:flex; gap:12px; justify-content:center;">
+      <button type="submit" style="background:#f2cd00; border:0; padding:10px 20px; border-radius:26px; font-weight:700;">Save</button>
+      <a href="{% url 'paymode_list' %}" style="background:#ff3b30; color:white; padding:10px 20px; border-radius:26px; text-decoration:none; font-weight:700;">Cancel</a>
+    </div>
+  </form>
+</div>
+
+<script>
+  (function () {
+    var unselectAll = document.getElementById("paymodeUnselectAll");
+    if (!unselectAll) return;
+    unselectAll.addEventListener("change", function () {
+      if (!unselectAll.checked) return;
+      document.querySelectorAll("input[name='locations']").forEach(function (cb) {
+        cb.checked = false;
+      });
+      unselectAll.checked = false;
+    });
+  })();
+</script>
+{% endblock %}
